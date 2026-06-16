@@ -478,7 +478,7 @@ function renderDepotChart() {
 
   document.getElementById('depot-chart-title').textContent = `Dead Miles Lost by Reason — ${depot}`;
 
-  const datasets = slots.map(i => ({
+  const datasets = slots.slice().reverse().map(i => ({
     label: labels[i],
     data: reasons.map(r => (depotData[r] ? depotData[r][i] : 0)),
     backgroundColor: SLOT_COLOURS[i],
@@ -525,7 +525,7 @@ function renderChartsPage() {
     state.enabledReasons.has(r) && slots.some(i => aggregated[r][i] > 0)
   );
 
-  const datasets = slots.map(i => ({
+  const datasets = slots.slice().reverse().map(i => ({
     label: labels[i],
     data: activeReasons.map(r => aggregated[r][i]),
     backgroundColor: SLOT_COLOURS[i],
