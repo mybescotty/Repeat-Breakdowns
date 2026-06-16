@@ -16,8 +16,6 @@
     }
     .upload-zone:hover, .upload-zone.drag-over { border-color: #2563eb; background: #eff6ff; }
     .upload-zone.loaded { border-color: #16a34a; background: #f0fdf4; }
-    .tab-btn { transition: all 0.15s; }
-    .tab-btn.active { background: #1e40af; color: #fff; }
     .depot-tab.active { border-bottom: 3px solid #2563eb; color: #1d4ed8; font-weight: 600; }
     .nav-btn.active { background: #1e40af; color: white; }
     table { border-collapse: collapse; width: 100%; }
@@ -29,8 +27,14 @@
     .bar-cell { position: relative; }
     .bar-inner { height: 10px; border-radius: 3px; min-width: 2px; }
     select { appearance: auto; }
-    #charts-section canvas { max-height: 420px; }
+    #charts-section canvas { max-height: 440px; }
     .legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 4px; }
+    #reason-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px 24px; }
+    @media(max-width:768px){ #reason-grid { grid-template-columns: repeat(2,1fr); } }
+    .rc-label { display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#475569; cursor:pointer; }
+    .rc-label:hover { color:#1d4ed8; }
+    .rc-label input { accent-color:#2563eb; cursor:pointer; }
+    .rc-label.disabled { opacity:0.45; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -55,7 +59,6 @@
   <p class="text-xs text-slate-500 mb-3 uppercase tracking-widest font-semibold">Upload Period Data (Newest → Oldest)</p>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-    <!-- Slot 0 = Newest -->
     <div>
       <label class="block text-xs font-semibold text-slate-600 mb-1">Newest Period</label>
       <div class="upload-zone rounded-lg p-4 text-center" id="zone-0" onclick="document.getElementById('file-0').click()" ondragover="onDragOver(event,0)" ondragleave="onDragLeave(0)" ondrop="onDrop(event,0)">
@@ -68,7 +71,6 @@
       </select>
     </div>
 
-    <!-- Slot 1 = Older -->
     <div>
       <label class="block text-xs font-semibold text-slate-600 mb-1">Older Period</label>
       <div class="upload-zone rounded-lg p-4 text-center" id="zone-1" onclick="document.getElementById('file-1').click()" ondragover="onDragOver(event,1)" ondragleave="onDragLeave(1)" ondrop="onDrop(event,1)">
@@ -81,7 +83,6 @@
       </select>
     </div>
 
-    <!-- Slot 2 = Oldest -->
     <div>
       <label class="block text-xs font-semibold text-slate-600 mb-1">Oldest Period</label>
       <div class="upload-zone rounded-lg p-4 text-center" id="zone-2" onclick="document.getElementById('file-2').click()" ondragover="onDragOver(event,2)" ondragleave="onDragLeave(2)" ondrop="onDrop(event,2)">
@@ -97,10 +98,28 @@
   </div>
 </div>
 
+<!-- ═══ REASON CODE FILTER PANEL ═══ -->
+<div class="bg-slate-50 border-b border-slate-200 px-6 py-3">
+  <div class="flex flex-wrap items-center gap-3">
+    <span class="text-xs font-semibold text-slate-600 uppercase tracking-widest">Reason Code Filter</span>
+    <button onclick="selectAllReasons()" class="text-xs px-2 py-0.5 rounded border border-blue-300 text-blue-700 hover:bg-blue-50">Select All</button>
+    <button onclick="clearAllReasons()" class="text-xs px-2 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50">Clear All</button>
+    <span id="filter-count" class="text-xs text-slate-400"></span>
+    <button onclick="toggleFilterPanel()" id="filter-toggle-btn"
+      class="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 font-medium">
+      <span id="filter-toggle-label">Show filters</span>
+      <svg id="filter-arrow" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </button>
+  </div>
+  <div id="reason-filter-body" class="hidden mt-3 pb-1">
+    <div id="reason-grid"></div>
+  </div>
+</div>
+
 <!-- ═══ MAIN SCREEN ═══ -->
 <div id="main-section" class="px-6 py-5">
-
-  <!-- placeholder before any data -->
   <div id="no-data-msg" class="text-center text-slate-400 mt-16">
     <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -109,25 +128,17 @@
     <p class="text-sm mt-1">Use the upload boxes above — then select a period label from the dropdown</p>
   </div>
 
-  <!-- depot content (hidden until data loaded) -->
   <div id="depot-content" class="hidden">
-    <!-- Depot tabs -->
     <div class="flex gap-0 border-b border-slate-200 mb-5 overflow-x-auto" id="depot-tabs"></div>
-
-    <!-- Legend -->
     <div class="flex flex-wrap gap-4 mb-4 text-xs" id="legend"></div>
-
-    <!-- Table -->
     <div class="bg-white rounded-xl shadow overflow-x-auto">
       <table id="breakdown-table">
         <thead><tr id="table-head"></tr></thead>
         <tbody id="table-body"></tbody>
       </table>
     </div>
-
-    <!-- Bar chart for current depot -->
     <div class="bg-white rounded-xl shadow mt-5 p-4">
-      <h3 class="text-sm font-semibold text-slate-600 mb-3" id="depot-chart-title">Miles Lost by Reason — Current Depot</h3>
+      <h3 class="text-sm font-semibold text-slate-600 mb-3" id="depot-chart-title">Dead Miles Lost by Reason — Current Depot</h3>
       <canvas id="depot-chart"></canvas>
     </div>
   </div>
@@ -182,39 +193,26 @@ const REASON_CODES = [
   'Bus vandalism',
 ];
 
-// Normalise a reason description for comparison (trim, collapse spaces)
-function normalise(s) {
-  return (s || '').trim().replace(/\s+/g, ' ');
-}
+function normalise(s) { return (s || '').trim().replace(/\s+/g, ' '); }
 const REASON_SET = new Set(REASON_CODES.map(normalise));
 
-// Period dropdown options
 const PERIOD_OPTIONS = [];
-const FYS = ['FY26','FY27','FY28'];
-FYS.forEach(fy => {
-  for (let p = 1; p <= 12; p++) {
-    PERIOD_OPTIONS.push(`${fy} P${p}`);
-  }
+['FY26','FY27','FY28'].forEach(fy => {
+  for (let p = 1; p <= 12; p++) PERIOD_OPTIONS.push(`${fy} P${p}`);
 });
 
-// Colours per slot (newest / older / oldest)
 const SLOT_COLOURS = ['#2563eb', '#f59e0b', '#16a34a'];
-const SLOT_LIGHT   = ['#dbeafe', '#fef3c7', '#dcfce7'];
 
 // ─── §2  STATE ────────────────────────────────────────────────────────────────
 
 const state = {
-  // raw parsed rows per slot (null if not uploaded)
   raw: [null, null, null],
-  // period label per slot
   labels: ['', '', ''],
-  // grouped data: depot → reasonDesc → [val0, val1, val2]
   grouped: {},
-  // sorted depot names
   depots: [],
   activeDepot: null,
   activeScreen: 'main',
-  // Chart.js instances
+  enabledReasons: new Set(REASON_CODES),   // all on by default
   depotChartInst: null,
   periodChartInst: null,
 };
@@ -226,7 +224,6 @@ function handleFile(slot, input) {
   if (!file) return;
   document.getElementById(`zone-${slot}-label`).textContent = file.name;
   document.getElementById(`zone-${slot}`).classList.add('loaded');
-
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
@@ -240,76 +237,120 @@ function handleFile(slot, input) {
 
 function rebuildData() {
   const grouped = {};
-
   state.raw.forEach((rows, slot) => {
     if (!rows) return;
     rows.forEach(row => {
-      const desc = normalise(row.REASONDESC || row['REASONDESC'] || '');
+      const desc = normalise(row.REASONDESC || '');
       if (!REASON_SET.has(desc)) return;
-
       const depot = (row.DEPOTNAME || '').trim();
       if (!depot) return;
-
       const dead = parseFloat(row.DEAD) || 0;
-
       if (!grouped[depot]) grouped[depot] = {};
       if (!grouped[depot][desc]) grouped[depot][desc] = [0, 0, 0];
       grouped[depot][desc][slot] += dead;
     });
   });
-
   state.grouped = grouped;
   state.depots = Object.keys(grouped).sort();
-
   if (!state.activeDepot || !state.depots.includes(state.activeDepot)) {
     state.activeDepot = state.depots[0] || null;
   }
-
-  // Sync depot filter on charts page
   const sel = document.getElementById('chart-depot-filter');
   const prev = sel.value;
   while (sel.options.length > 1) sel.remove(1);
   state.depots.forEach(d => {
     const opt = document.createElement('option');
-    opt.value = d;
-    opt.textContent = d;
-    sel.appendChild(opt);
+    opt.value = d; opt.textContent = d; sel.appendChild(opt);
   });
   if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
 }
 
 function onPeriodChange() {
-  for (let i = 0; i < 3; i++) {
-    state.labels[i] = document.getElementById(`period-${i}`).value;
-  }
+  for (let i = 0; i < 3; i++) state.labels[i] = document.getElementById(`period-${i}`).value;
   render();
 }
 
-function getActiveLabels() {
-  return state.labels.map((l, i) => l || `Period ${i+1}`);
-}
-
-// Which slots actually have data
-function activeSlots() {
-  return state.raw.map((r, i) => r ? i : -1).filter(i => i >= 0);
+function getActiveLabels() { return state.labels.map((l, i) => l || `Period ${i+1}`); }
+function activeSlots() { return state.raw.map((r, i) => r ? i : -1).filter(i => i >= 0); }
+function visibleReasons(depotData) {
+  return REASON_CODES.filter(r =>
+    state.enabledReasons.has(r) && depotData[r] && depotData[r].some(v => v > 0)
+  );
 }
 </script>
 <script>
-// ─── §4  INIT PERIOD DROPDOWNS ───────────────────────────────────────────────
+// ─── §4  INIT ────────────────────────────────────────────────────────────────
 
 function initDropdowns() {
   for (let i = 0; i < 3; i++) {
     const sel = document.getElementById(`period-${i}`);
     PERIOD_OPTIONS.forEach(p => {
       const opt = document.createElement('option');
-      opt.value = p;
-      opt.textContent = p;
-      sel.appendChild(opt);
+      opt.value = p; opt.textContent = p; sel.appendChild(opt);
     });
   }
 }
 
-// ─── §5  DRAG-AND-DROP HELPERS ───────────────────────────────────────────────
+function initReasonFilter() {
+  const grid = document.getElementById('reason-grid');
+  REASON_CODES.forEach(r => {
+    const label = document.createElement('label');
+    label.className = 'rc-label';
+    label.dataset.reason = r;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.addEventListener('change', () => toggleReason(r, cb.checked));
+    const span = document.createElement('span');
+    span.textContent = r;
+    span.style.overflow = 'hidden';
+    span.style.textOverflow = 'ellipsis';
+    span.style.whiteSpace = 'nowrap';
+    label.appendChild(cb);
+    label.appendChild(span);
+    grid.appendChild(label);
+  });
+  updateFilterCount();
+}
+
+function updateFilterCount() {
+  const el = document.getElementById('filter-count');
+  if (el) el.textContent = `(${state.enabledReasons.size} of ${REASON_CODES.length} shown)`;
+}
+
+// ─── §5  FILTER PANEL CONTROLS ───────────────────────────────────────────────
+
+function toggleReason(r, checked) {
+  if (checked) state.enabledReasons.add(r);
+  else state.enabledReasons.delete(r);
+  updateFilterCount();
+  render();
+}
+
+function selectAllReasons() {
+  state.enabledReasons = new Set(REASON_CODES);
+  document.querySelectorAll('#reason-grid input[type=checkbox]').forEach(cb => cb.checked = true);
+  updateFilterCount();
+  render();
+}
+
+function clearAllReasons() {
+  state.enabledReasons = new Set();
+  document.querySelectorAll('#reason-grid input[type=checkbox]').forEach(cb => cb.checked = false);
+  updateFilterCount();
+  render();
+}
+
+function toggleFilterPanel() {
+  const body = document.getElementById('reason-filter-body');
+  const lbl  = document.getElementById('filter-toggle-label');
+  const arr  = document.getElementById('filter-arrow');
+  const open = body.classList.toggle('hidden');
+  lbl.textContent = open ? 'Show filters' : 'Hide filters';
+  arr.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+// ─── §6  DRAG-AND-DROP HELPERS ───────────────────────────────────────────────
 
 function onDragOver(e, slot) {
   e.preventDefault();
@@ -323,7 +364,6 @@ function onDrop(e, slot) {
   document.getElementById(`zone-${slot}`).classList.remove('drag-over');
   const file = e.dataTransfer.files[0];
   if (!file) return;
-  // Simulate input file selection
   const dt = new DataTransfer();
   dt.items.add(file);
   const input = document.getElementById(`file-${slot}`);
@@ -331,7 +371,7 @@ function onDrop(e, slot) {
   handleFile(slot, input);
 }
 
-// ─── §6  SCREEN NAVIGATION ───────────────────────────────────────────────────
+// ─── §7  SCREEN NAVIGATION ───────────────────────────────────────────────────
 
 function showScreen(name) {
   state.activeScreen = name;
@@ -344,7 +384,7 @@ function showScreen(name) {
   if (name === 'charts') renderChartsPage();
 }
 
-// ─── §7  MAIN VIEW RENDER ────────────────────────────────────────────────────
+// ─── §8  MAIN VIEW RENDER ────────────────────────────────────────────────────
 
 function render() {
   const slots = activeSlots();
@@ -352,7 +392,6 @@ function render() {
   document.getElementById('no-data-msg').classList.toggle('hidden', hasData);
   document.getElementById('depot-content').classList.toggle('hidden', !hasData);
   if (!hasData) return;
-
   renderDepotTabs();
   renderLegend();
   renderTable();
@@ -381,7 +420,7 @@ function renderLegend() {
   slots.forEach(i => {
     const item = document.createElement('div');
     item.className = 'flex items-center gap-1 text-xs text-slate-600';
-    item.innerHTML = `<span class="legend-dot" style="background:${SLOT_COLOURS[i]}"></span>${labels[i]}`;
+    item.innerHTML = `<span style="width:12px;height:12px;border-radius:3px;background:${SLOT_COLOURS[i]};display:inline-block;margin-right:4px"></span>${labels[i]}`;
     container.appendChild(item);
   });
 }
@@ -391,37 +430,31 @@ function renderTable() {
   const slots = activeSlots();
   const labels = getActiveLabels();
   const depotData = state.grouped[depot] || {};
+  const reasons = visibleReasons(depotData);
 
-  // Collect all reasons present in this depot across any slot
-  const reasons = REASON_CODES.filter(r => depotData[r] && depotData[r].some(v => v > 0));
-
-  // Find max DEAD value for bar scaling
   let maxVal = 0;
   reasons.forEach(r => { slots.forEach(i => { maxVal = Math.max(maxVal, depotData[r][i] || 0); }); });
 
-  // Head
   const thead = document.getElementById('table-head');
-  thead.innerHTML = '<th>Reason Description</th>' + slots.map(i => `<th>${labels[i]}<br><span class="font-normal opacity-70">Dead Miles</span></th>`).join('') + '<th>Trend Bar</th>';
+  thead.innerHTML = '<th>Reason Description</th>' +
+    slots.map(i => `<th>${labels[i]}<br><span class="font-normal opacity-70">Dead Miles</span></th>`).join('') +
+    '<th>Trend Bar</th>';
 
-  // Totals per slot
   const totals = [0, 0, 0];
   reasons.forEach(r => { slots.forEach(i => { totals[i] += (depotData[r] ? depotData[r][i] : 0); }); });
 
-  // Body
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = '';
 
-  // Totals row first
   const totRow = document.createElement('tr');
   totRow.className = 'totals-row';
-  totRow.innerHTML = '<td>TOTAL</td>' + slots.map(i => `<td>${totals[i].toFixed(1)}</td>`).join('') + '<td></td>';
+  totRow.innerHTML = '<td>TOTAL (visible)</td>' + slots.map(i => `<td class="text-right tabular-nums">${totals[i].toFixed(1)}</td>`).join('') + '<td></td>';
   tbody.appendChild(totRow);
 
-  // Data rows
   reasons.forEach(r => {
     const vals = depotData[r] || [0,0,0];
     const tr = document.createElement('tr');
-    let barHtml = '<div class="flex flex-col gap-0.5 py-0.5">';
+    let barHtml = '<div style="display:flex;flex-direction:column;gap:2px;padding:2px 0">';
     slots.forEach(i => {
       const pct = maxVal > 0 ? (vals[i] / maxVal * 100).toFixed(1) : 0;
       barHtml += `<div class="bar-inner" style="width:${pct}%;background:${SLOT_COLOURS[i]}" title="${labels[i]}: ${vals[i].toFixed(1)}"></div>`;
@@ -434,14 +467,14 @@ function renderTable() {
   });
 }
 
-// ─── §8  DEPOT BAR CHART ─────────────────────────────────────────────────────
+// ─── §9  DEPOT BAR CHART ─────────────────────────────────────────────────────
 
 function renderDepotChart() {
   const depot = state.activeDepot;
   const slots = activeSlots();
   const labels = getActiveLabels();
   const depotData = state.grouped[depot] || {};
-  const reasons = REASON_CODES.filter(r => depotData[r] && depotData[r].some(v => v > 0));
+  const reasons = visibleReasons(depotData);
 
   document.getElementById('depot-chart-title').textContent = `Dead Miles Lost by Reason — ${depot}`;
 
@@ -469,7 +502,7 @@ function renderDepotChart() {
   });
 }
 
-// ─── §9  CHARTS PAGE (PERIOD COMPARISON) ─────────────────────────────────────
+// ─── §10  PERIOD COMPARISON CHART ────────────────────────────────────────────
 
 function renderChartsPage() {
   const slots = activeSlots();
@@ -477,12 +510,10 @@ function renderChartsPage() {
 
   const depotFilter = document.getElementById('chart-depot-filter').value;
   const labels = getActiveLabels();
-
-  // Aggregate across depots (or single depot)
   const depots = depotFilter === 'ALL' ? state.depots : [depotFilter];
+
   const aggregated = {};
   REASON_CODES.forEach(r => { aggregated[r] = [0, 0, 0]; });
-
   depots.forEach(depot => {
     const d = state.grouped[depot] || {};
     REASON_CODES.forEach(r => {
@@ -490,8 +521,9 @@ function renderChartsPage() {
     });
   });
 
-  // Only show reasons with any data
-  const activeReasons = REASON_CODES.filter(r => slots.some(i => aggregated[r][i] > 0));
+  const activeReasons = REASON_CODES.filter(r =>
+    state.enabledReasons.has(r) && slots.some(i => aggregated[r][i] > 0)
+  );
 
   const datasets = slots.map(i => ({
     label: labels[i],
@@ -519,9 +551,10 @@ function renderChartsPage() {
   });
 }
 
-// ─── §10  INIT ────────────────────────────────────────────────────────────────
+// ─── §11  INIT ────────────────────────────────────────────────────────────────
 
 initDropdowns();
+initReasonFilter();
 </script>
 </body>
 </html>
