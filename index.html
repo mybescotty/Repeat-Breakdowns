@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breakdown Analysis Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; }
+    .upload-zone {
+      border: 2px dashed #94a3b8;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: #2563eb; background: #eff6ff; }
+    .upload-zone.loaded { border-color: #16a34a; background: #f0fdf4; }
+    .tab-btn { transition: all 0.15s; }
+    .tab-btn.active { background: #1e40af; color: #fff; }
+    .depot-tab.active { border-bottom: 3px solid #2563eb; color: #1d4ed8; font-weight: 600; }
+    .nav-btn.active { background: #1e40af; color: white; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: #1e3a5f; color: white; font-size: 0.75rem; padding: 8px 10px; text-align: left; white-space: nowrap; }
+    td { font-size: 0.8rem; padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
+    tr:hover td { background: #eff6ff; }
+    tr.totals-row td { background: #1e3a5f; color: white; font-weight: 700; }
+    tr.totals-row:hover td { background: #1e3a5f; }
+    .bar-cell { position: relative; }
+    .bar-inner { height: 10px; border-radius: 3px; min-width: 2px; }
+    select { appearance: auto; }
+    #charts-section canvas { max-height: 420px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 4px; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<!-- ═══ HEADER ═══ -->
+<header class="bg-[#1e3a5f] text-white px-6 py-3 flex items-center justify-between shadow-lg">
+  <div class="flex items-center gap-3">
+    <svg class="w-7 h-7 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+    </svg>
+    <h1 class="text-lg font-bold tracking-wide">Breakdown Analysis Dashboard</h1>
+  </div>
+  <nav class="flex gap-2">
+    <button id="nav-main" class="nav-btn active px-4 py-1.5 rounded text-sm font-medium transition-colors" onclick="showScreen('main')">Main View</button>
+    <button id="nav-charts" class="nav-btn px-4 py-1.5 rounded text-sm font-medium transition-colors bg-white/10 hover:bg-white/20" onclick="showScreen('charts')">Period Charts</button>
+  </nav>
+</header>
+
+<!-- ═══ UPLOAD PANEL ═══ -->
+<div class="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
+  <p class="text-xs text-slate-500 mb-3 uppercase tracking-widest font-semibold">Upload Period Data (Newest → Oldest)</p>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    <!-- Slot 0 = Newest -->
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Newest Period</label>
+      <div class="upload-zone rounded-lg p-4 text-center" id="zone-0" onclick="document.getElementById('file-0').click()" ondragover="onDragOver(event,0)" ondragleave="onDragLeave(0)" ondrop="onDrop(event,0)">
+        <svg class="w-6 h-6 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        <span id="zone-0-label" class="text-xs text-slate-500">Drop CSV or click</span>
+      </div>
+      <input type="file" id="file-0" class="hidden" accept=".csv" onchange="handleFile(0,this)">
+      <select id="period-0" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
+        <option value="">— select period —</option>
+      </select>
+    </div>
+
+    <!-- Slot 1 = Older -->
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Older Period</label>
+      <div class="upload-zone rounded-lg p-4 text-center" id="zone-1" onclick="document.getElementById('file-1').click()" ondragover="onDragOver(event,1)" ondragleave="onDragLeave(1)" ondrop="onDrop(event,1)">
+        <svg class="w-6 h-6 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        <span id="zone-1-label" class="text-xs text-slate-500">Drop CSV or click</span>
+      </div>
+      <input type="file" id="file-1" class="hidden" accept=".csv" onchange="handleFile(1,this)">
+      <select id="period-1" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
+        <option value="">— select period —</option>
+      </select>
+    </div>
+
+    <!-- Slot 2 = Oldest -->
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Oldest Period</label>
+      <div class="upload-zone rounded-lg p-4 text-center" id="zone-2" onclick="document.getElementById('file-2').click()" ondragover="onDragOver(event,2)" ondragleave="onDragLeave(2)" ondrop="onDrop(event,2)">
+        <svg class="w-6 h-6 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        <span id="zone-2-label" class="text-xs text-slate-500">Drop CSV or click</span>
+      </div>
+      <input type="file" id="file-2" class="hidden" accept=".csv" onchange="handleFile(2,this)">
+      <select id="period-2" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
+        <option value="">— select period —</option>
+      </select>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ MAIN SCREEN ═══ -->
+<div id="main-section" class="px-6 py-5">
+
+  <!-- placeholder before any data -->
+  <div id="no-data-msg" class="text-center text-slate-400 mt-16">
+    <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <p class="text-lg font-medium">Upload at least one period CSV to begin</p>
+    <p class="text-sm mt-1">Use the upload boxes above — then select a period label from the dropdown</p>
+  </div>
+
+  <!-- depot content (hidden until data loaded) -->
+  <div id="depot-content" class="hidden">
+    <!-- Depot tabs -->
+    <div class="flex gap-0 border-b border-slate-200 mb-5 overflow-x-auto" id="depot-tabs"></div>
+
+    <!-- Legend -->
+    <div class="flex flex-wrap gap-4 mb-4 text-xs" id="legend"></div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-xl shadow overflow-x-auto">
+      <table id="breakdown-table">
+        <thead><tr id="table-head"></tr></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Bar chart for current depot -->
+    <div class="bg-white rounded-xl shadow mt-5 p-4">
+      <h3 class="text-sm font-semibold text-slate-600 mb-3" id="depot-chart-title">Miles Lost by Reason — Current Depot</h3>
+      <canvas id="depot-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CHARTS SCREEN ═══ -->
+<div id="charts-section" class="px-6 py-5 hidden">
+  <div class="bg-white rounded-xl shadow p-5">
+    <div class="flex flex-wrap items-center gap-4 mb-5">
+      <h2 class="text-base font-bold text-slate-700">All Reason Codes — Period Comparison</h2>
+      <div class="flex items-center gap-2 ml-auto">
+        <label class="text-xs text-slate-500 font-medium">Filter depot:</label>
+        <select id="chart-depot-filter" class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white" onchange="renderChartsPage()">
+          <option value="ALL">All Depots</option>
+        </select>
+      </div>
+    </div>
+    <canvas id="period-chart"></canvas>
+  </div>
+</div>
+
+<script>
+// ─── §1  CONSTANTS ────────────────────────────────────────────────────────────
+
+const REASON_CODES = [
+  'Body/Panel damage (not RTC related)',
+  'Door defects',
+  'Drive Battery Fault',
+  'Electrical defects',
+  'Eminox/Exhaust after treatment defect',
+  'Engine Failure',
+  'EV Battery Low',
+  'EV Fault',
+  'Fluid/Air leaks (Oil,Coolant,Fuel,Air)',
+  'Foot/hand brake defect',
+  'Gears defect',
+  'Indicator defect',
+  'Lights external/internal',
+  'Loss of power to ticketer/destination screen/CCTV',
+  'Markerlight',
+  'Mirror defect( Not inc Accident Damage)',
+  'No Bus Available',
+  'Out of fuel',
+  'Overheating, Cold',
+  'Speedo defect',
+  'Steering',
+  'Suspension/Kneeling',
+  'Water Ingress',
+  'Wheelchair ramp failure',
+  'Wipers/demisters defect',
+  'Accident (our vehicle)',
+  'Bus vandalism',
+];
+
+// Normalise a reason description for comparison (trim, collapse spaces)
+function normalise(s) {
+  return (s || '').trim().replace(/\s+/g, ' ');
+}
+const REASON_SET = new Set(REASON_CODES.map(normalise));
+
+// Period dropdown options
+const PERIOD_OPTIONS = [];
+const FYS = ['FY26','FY27','FY28'];
+FYS.forEach(fy => {
+  for (let p = 1; p <= 12; p++) {
+    PERIOD_OPTIONS.push(`${fy} P${p}`);
+  }
+});
+
+// Colours per slot (newest / older / oldest)
+const SLOT_COLOURS = ['#2563eb', '#f59e0b', '#16a34a'];
+const SLOT_LIGHT   = ['#dbeafe', '#fef3c7', '#dcfce7'];
+
+// ─── §2  STATE ────────────────────────────────────────────────────────────────
+
+const state = {
+  // raw parsed rows per slot (null if not uploaded)
+  raw: [null, null, null],
+  // period label per slot
+  labels: ['', '', ''],
+  // grouped data: depot → reasonDesc → [val0, val1, val2]
+  grouped: {},
+  // sorted depot names
+  depots: [],
+  activeDepot: null,
+  activeScreen: 'main',
+  // Chart.js instances
+  depotChartInst: null,
+  periodChartInst: null,
+};
+
+// ─── §3  CSV PARSING & DATA GROUPING ─────────────────────────────────────────
+
+function handleFile(slot, input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById(`zone-${slot}-label`).textContent = file.name;
+  document.getElementById(`zone-${slot}`).classList.add('loaded');
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete(result) {
+      state.raw[slot] = result.data;
+      rebuildData();
+      render();
+    }
+  });
+}
+
+function rebuildData() {
+  const grouped = {};
+
+  state.raw.forEach((rows, slot) => {
+    if (!rows) return;
+    rows.forEach(row => {
+      const desc = normalise(row.REASONDESC || row['REASONDESC'] || '');
+      if (!REASON_SET.has(desc)) return;
+
+      const depot = (row.DEPOTNAME || '').trim();
+      if (!depot) return;
+
+      const dead = parseFloat(row.DEAD) || 0;
+
+      if (!grouped[depot]) grouped[depot] = {};
+      if (!grouped[depot][desc]) grouped[depot][desc] = [0, 0, 0];
+      grouped[depot][desc][slot] += dead;
+    });
+  });
+
+  state.grouped = grouped;
+  state.depots = Object.keys(grouped).sort();
+
+  if (!state.activeDepot || !state.depots.includes(state.activeDepot)) {
+    state.activeDepot = state.depots[0] || null;
+  }
+
+  // Sync depot filter on charts page
+  const sel = document.getElementById('chart-depot-filter');
+  const prev = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  state.depots.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    sel.appendChild(opt);
+  });
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function onPeriodChange() {
+  for (let i = 0; i < 3; i++) {
+    state.labels[i] = document.getElementById(`period-${i}`).value;
+  }
+  render();
+}
+
+function getActiveLabels() {
+  return state.labels.map((l, i) => l || `Period ${i+1}`);
+}
+
+// Which slots actually have data
+function activeSlots() {
+  return state.raw.map((r, i) => r ? i : -1).filter(i => i >= 0);
+}
+</script>
+<script>
+// ─── §4  INIT PERIOD DROPDOWNS ───────────────────────────────────────────────
+
+function initDropdowns() {
+  for (let i = 0; i < 3; i++) {
+    const sel = document.getElementById(`period-${i}`);
+    PERIOD_OPTIONS.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+// ─── §5  DRAG-AND-DROP HELPERS ───────────────────────────────────────────────
+
+function onDragOver(e, slot) {
+  e.preventDefault();
+  document.getElementById(`zone-${slot}`).classList.add('drag-over');
+}
+function onDragLeave(slot) {
+  document.getElementById(`zone-${slot}`).classList.remove('drag-over');
+}
+function onDrop(e, slot) {
+  e.preventDefault();
+  document.getElementById(`zone-${slot}`).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  // Simulate input file selection
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const input = document.getElementById(`file-${slot}`);
+  input.files = dt.files;
+  handleFile(slot, input);
+}
+
+// ─── §6  SCREEN NAVIGATION ───────────────────────────────────────────────────
+
+function showScreen(name) {
+  state.activeScreen = name;
+  document.getElementById('main-section').classList.toggle('hidden', name !== 'main');
+  document.getElementById('charts-section').classList.toggle('hidden', name !== 'charts');
+  document.getElementById('nav-main').classList.toggle('active', name === 'main');
+  document.getElementById('nav-main').classList.toggle('bg-white/10', name !== 'main');
+  document.getElementById('nav-charts').classList.toggle('active', name === 'charts');
+  document.getElementById('nav-charts').classList.toggle('bg-white/10', name !== 'charts');
+  if (name === 'charts') renderChartsPage();
+}
+
+// ─── §7  MAIN VIEW RENDER ────────────────────────────────────────────────────
+
+function render() {
+  const slots = activeSlots();
+  const hasData = slots.length > 0 && state.depots.length > 0;
+  document.getElementById('no-data-msg').classList.toggle('hidden', hasData);
+  document.getElementById('depot-content').classList.toggle('hidden', !hasData);
+  if (!hasData) return;
+
+  renderDepotTabs();
+  renderLegend();
+  renderTable();
+  renderDepotChart();
+  if (state.activeScreen === 'charts') renderChartsPage();
+}
+
+function renderDepotTabs() {
+  const container = document.getElementById('depot-tabs');
+  container.innerHTML = '';
+  state.depots.forEach(depot => {
+    const btn = document.createElement('button');
+    btn.className = 'depot-tab px-5 py-2 text-sm text-slate-600 border-b-2 border-transparent hover:text-blue-600 transition-colors whitespace-nowrap';
+    btn.textContent = depot;
+    if (depot === state.activeDepot) btn.classList.add('active');
+    btn.onclick = () => { state.activeDepot = depot; renderDepotTabs(); renderLegend(); renderTable(); renderDepotChart(); };
+    container.appendChild(btn);
+  });
+}
+
+function renderLegend() {
+  const slots = activeSlots();
+  const labels = getActiveLabels();
+  const container = document.getElementById('legend');
+  container.innerHTML = '';
+  slots.forEach(i => {
+    const item = document.createElement('div');
+    item.className = 'flex items-center gap-1 text-xs text-slate-600';
+    item.innerHTML = `<span class="legend-dot" style="background:${SLOT_COLOURS[i]}"></span>${labels[i]}`;
+    container.appendChild(item);
+  });
+}
+
+function renderTable() {
+  const depot = state.activeDepot;
+  const slots = activeSlots();
+  const labels = getActiveLabels();
+  const depotData = state.grouped[depot] || {};
+
+  // Collect all reasons present in this depot across any slot
+  const reasons = REASON_CODES.filter(r => depotData[r] && depotData[r].some(v => v > 0));
+
+  // Find max DEAD value for bar scaling
+  let maxVal = 0;
+  reasons.forEach(r => { slots.forEach(i => { maxVal = Math.max(maxVal, depotData[r][i] || 0); }); });
+
+  // Head
+  const thead = document.getElementById('table-head');
+  thead.innerHTML = '<th>Reason Description</th>' + slots.map(i => `<th>${labels[i]}<br><span class="font-normal opacity-70">Dead Miles</span></th>`).join('') + '<th>Trend Bar</th>';
+
+  // Totals per slot
+  const totals = [0, 0, 0];
+  reasons.forEach(r => { slots.forEach(i => { totals[i] += (depotData[r] ? depotData[r][i] : 0); }); });
+
+  // Body
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  // Totals row first
+  const totRow = document.createElement('tr');
+  totRow.className = 'totals-row';
+  totRow.innerHTML = '<td>TOTAL</td>' + slots.map(i => `<td>${totals[i].toFixed(1)}</td>`).join('') + '<td></td>';
+  tbody.appendChild(totRow);
+
+  // Data rows
+  reasons.forEach(r => {
+    const vals = depotData[r] || [0,0,0];
+    const tr = document.createElement('tr');
+    let barHtml = '<div class="flex flex-col gap-0.5 py-0.5">';
+    slots.forEach(i => {
+      const pct = maxVal > 0 ? (vals[i] / maxVal * 100).toFixed(1) : 0;
+      barHtml += `<div class="bar-inner" style="width:${pct}%;background:${SLOT_COLOURS[i]}" title="${labels[i]}: ${vals[i].toFixed(1)}"></div>`;
+    });
+    barHtml += '</div>';
+    tr.innerHTML = `<td class="font-medium text-slate-700">${r}</td>` +
+      slots.map(i => `<td class="text-right tabular-nums">${vals[i] > 0 ? vals[i].toFixed(1) : '<span class="text-slate-300">—</span>'}</td>`).join('') +
+      `<td class="bar-cell" style="min-width:120px">${barHtml}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── §8  DEPOT BAR CHART ─────────────────────────────────────────────────────
+
+function renderDepotChart() {
+  const depot = state.activeDepot;
+  const slots = activeSlots();
+  const labels = getActiveLabels();
+  const depotData = state.grouped[depot] || {};
+  const reasons = REASON_CODES.filter(r => depotData[r] && depotData[r].some(v => v > 0));
+
+  document.getElementById('depot-chart-title').textContent = `Dead Miles Lost by Reason — ${depot}`;
+
+  const datasets = slots.map(i => ({
+    label: labels[i],
+    data: reasons.map(r => (depotData[r] ? depotData[r][i] : 0)),
+    backgroundColor: SLOT_COLOURS[i],
+    borderRadius: 3,
+  }));
+
+  const canvas = document.getElementById('depot-chart');
+  if (state.depotChartInst) { state.depotChartInst.destroy(); state.depotChartInst = null; }
+  state.depotChartInst = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: reasons, datasets },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(1)} miles` } } },
+      scales: {
+        x: { title: { display: true, text: 'Dead Miles Lost' } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// ─── §9  CHARTS PAGE (PERIOD COMPARISON) ─────────────────────────────────────
+
+function renderChartsPage() {
+  const slots = activeSlots();
+  if (slots.length === 0) return;
+
+  const depotFilter = document.getElementById('chart-depot-filter').value;
+  const labels = getActiveLabels();
+
+  // Aggregate across depots (or single depot)
+  const depots = depotFilter === 'ALL' ? state.depots : [depotFilter];
+  const aggregated = {};
+  REASON_CODES.forEach(r => { aggregated[r] = [0, 0, 0]; });
+
+  depots.forEach(depot => {
+    const d = state.grouped[depot] || {};
+    REASON_CODES.forEach(r => {
+      if (d[r]) slots.forEach(i => { aggregated[r][i] += d[r][i]; });
+    });
+  });
+
+  // Only show reasons with any data
+  const activeReasons = REASON_CODES.filter(r => slots.some(i => aggregated[r][i] > 0));
+
+  const datasets = slots.map(i => ({
+    label: labels[i],
+    data: activeReasons.map(r => aggregated[r][i]),
+    backgroundColor: SLOT_COLOURS[i],
+    borderRadius: 3,
+  }));
+
+  const canvas = document.getElementById('period-chart');
+  if (state.periodChartInst) { state.periodChartInst.destroy(); state.periodChartInst = null; }
+  state.periodChartInst = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: activeReasons, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} miles` } }
+      },
+      scales: {
+        x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+        y: { title: { display: true, text: 'Dead Miles Lost' } }
+      }
+    }
+  });
+}
+
+// ─── §10  INIT ────────────────────────────────────────────────────────────────
+
+initDropdowns();
+</script>
+</body>
+</html>
