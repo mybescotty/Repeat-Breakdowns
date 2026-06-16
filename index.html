@@ -300,6 +300,19 @@ function onPeriodChange() {
 function getActiveLabels() { return state.labels.map((l, i) => l || `Period ${i+1}`); }
 function activeSlots() { return state.raw.map((r, i) => r ? i : -1).filter(i => i >= 0); }
 
+// Return active slot indices sorted chronologically by selected period label (oldest first).
+// Slots without a label selected keep their natural upload-box order at the end.
+function chronologicalSlotOrder() {
+  return activeSlots().sort((a, b) => {
+    const ia = PERIOD_OPTIONS.indexOf(state.labels[a]);
+    const ib = PERIOD_OPTIONS.indexOf(state.labels[b]);
+    if (ia === -1 && ib === -1) return a - b;
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+}
+
 function visibleReasons(depotData) {
   return state.reasonCodes.filter(r =>
     state.enabledReasons.has(r) && depotData[r] && depotData[r].some(v => v > 0)
@@ -517,7 +530,7 @@ function renderDepotChart() {
 
   document.getElementById('depot-chart-title').textContent = `Dead Miles Lost by Reason — ${depot}`;
 
-  const datasets = slots.slice().reverse().map(i => ({
+  const datasets = chronologicalSlotOrder().map(i => ({
     label: labels[i],
     data: reasons.map(r => (depotData[r] ? depotData[r][i] : 0)),
     backgroundColor: SLOT_COLOURS[i],
@@ -564,7 +577,7 @@ function renderChartsPage() {
     state.enabledReasons.has(r) && slots.some(i => aggregated[r][i] > 0)
   );
 
-  const datasets = slots.slice().reverse().map(i => ({
+  const datasets = chronologicalSlotOrder().map(i => ({
     label: labels[i],
     data: activeReasons.map(r => aggregated[r][i]),
     backgroundColor: SLOT_COLOURS[i],
