@@ -137,7 +137,7 @@
       </table>
     </div>
     <div class="bg-white rounded-xl shadow mt-5 p-4">
-      <h3 class="text-sm font-semibold text-slate-600 mb-3" id="depot-chart-title">Dead Miles Lost by Reason — Current Depot</h3>
+      <h3 class="text-sm font-semibold text-slate-600 mb-3" id="depot-chart-title">Total Miles Lost by Reason — Current Depot</h3>
       <canvas id="depot-chart"></canvas>
     </div>
   </div>
@@ -249,7 +249,7 @@ function rebuildData() {
       if (!desc) return;
       const depot = (row.DEPOTNAME || '').trim();
       if (!depot) return;
-      const dead = parseFloat(row.DEAD) || 0;
+      const dead = parseFloat(row.TOTAL) || 0;
       if (!grouped[depot]) grouped[depot] = {};
       if (!grouped[depot][desc]) grouped[depot][desc] = [0, 0, 0];
       grouped[depot][desc][slot] += dead;
@@ -488,7 +488,7 @@ function renderTable() {
 
   const thead = document.getElementById('table-head');
   thead.innerHTML = '<th>Reason Description</th>' +
-    slots.map(i => `<th>${labels[i]}<br><span class="font-normal opacity-70">Dead Miles</span></th>`).join('') +
+    slots.map(i => `<th>${labels[i]}<br><span class="font-normal opacity-70">Total Miles</span></th>`).join('') +
     '<th>Trend Bar</th>';
 
   const totals = [0, 0, 0];
@@ -528,7 +528,7 @@ function renderDepotChart() {
   const depotData = state.grouped[depot] || {};
   const reasons = visibleReasons(depotData);
 
-  document.getElementById('depot-chart-title').textContent = `Dead Miles Lost by Reason — ${depot}`;
+  document.getElementById('depot-chart-title').textContent = `Total Miles Lost by Reason — ${depot}`;
 
   const datasets = chronologicalSlotOrder().map(i => ({
     label: labels[i],
@@ -547,7 +547,7 @@ function renderDepotChart() {
       responsive: true,
       plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(1)} miles` } } },
       scales: {
-        x: { title: { display: true, text: 'Dead Miles Lost' } },
+        x: { title: { display: true, text: 'Total Miles Lost' } },
         y: { ticks: { font: { size: 11 } } }
       }
     }
@@ -597,7 +597,7 @@ function renderChartsPage() {
       },
       scales: {
         x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-        y: { title: { display: true, text: 'Dead Miles Lost' } }
+        y: { title: { display: true, text: 'Total Miles Lost' } }
       }
     }
   });
