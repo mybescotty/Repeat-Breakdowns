@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; }
     .upload-zone { border: 2px dashed #94a3b8; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
@@ -27,7 +26,7 @@
     .bar-cell { position: relative; }
     .bar-inner { height: 10px; border-radius: 3px; min-width: 2px; }
     select { appearance: auto; }
-    #charts-section canvas { max-height: 440px; }
+    #charts-section canvas, #incidents-section canvas { max-height: 440px; }
     #reason-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px 24px; }
     @media(max-width:768px){ #reason-grid { grid-template-columns: repeat(2,1fr); } }
     .rc-label { display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#475569; cursor:pointer; }
@@ -49,6 +48,7 @@
   <nav class="flex gap-2">
     <button id="nav-main" class="nav-btn active px-4 py-1.5 rounded text-sm font-medium transition-colors" onclick="showScreen('main')">Main View</button>
     <button id="nav-charts" class="nav-btn px-4 py-1.5 rounded text-sm font-medium transition-colors bg-white/10 hover:bg-white/20" onclick="showScreen('charts')">Period Charts</button>
+    <button id="nav-incidents" class="nav-btn px-4 py-1.5 rounded text-sm font-medium transition-colors bg-white/10 hover:bg-white/20" onclick="showScreen('incidents')">Incidents</button>
   </nav>
 </header>
 
@@ -170,6 +170,33 @@
   </div>
 </div>
 
+<!-- INCIDENTS SCREEN -->
+<div id="incidents-section" class="px-6 py-5 hidden">
+  <div id="no-birs-msg" class="text-center text-slate-400 mt-16">
+    <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <p class="text-lg font-medium">Upload BIRS incident CSVs to see breakdown counts</p>
+    <p class="text-sm mt-1">Use the purple upload zones beneath each period's LM CSV</p>
+  </div>
+  <div id="incidents-content" class="hidden">
+    <div class="flex items-center gap-2 mb-5">
+      <label class="text-xs text-slate-500 font-medium">Filter depot:</label>
+      <select id="inc-depot-filter" class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white" onchange="renderIncidentsPage()">
+        <option value="ALL">All Depots</option>
+      </select>
+    </div>
+    <div class="bg-white rounded-xl shadow p-5 mb-5">
+      <h2 class="text-base font-bold text-slate-700 mb-4">Number of Breakdowns per Reason</h2>
+      <canvas id="inc-count-chart"></canvas>
+    </div>
+    <div class="bg-white rounded-xl shadow p-5">
+      <h2 class="text-base font-bold text-slate-700 mb-4">Average Miles Lost per Incident</h2>
+      <canvas id="inc-avg-chart"></canvas>
+    </div>
+  </div>
+</div>
+
 <script>
 // §1  PREFERRED DISPLAY ORDER
 const PREFERRED_ORDER = [
@@ -227,6 +254,8 @@ const state = {
   knownReasons: new Set(),
   depotChartInst: null,
   periodChartInst: null,
+  incCountChartInst: null,
+  incAvgChartInst: null,
 };
 
 // §3  CSV PARSING
@@ -285,24 +314,26 @@ function rebuildData() {
   });
 
   rebuildFilterPanel();
-
-  const sel = document.getElementById('chart-depot-filter');
-  const prev = sel.value;
-  while (sel.options.length > 1) sel.remove(1);
-  state.depots.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d; opt.textContent = d; sel.appendChild(opt);
-  });
-  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
-
+  syncDepotDropdowns();
   rebuildBreakdownData();
 }
 
+function syncDepotDropdowns() {
+  ['chart-depot-filter', 'inc-depot-filter'].forEach(id => {
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    state.depots.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d; sel.appendChild(opt);
+    });
+    if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+  });
+}
+
 function rebuildBreakdownData() {
-  // lowercase → canonical depot name
   const depotMap = {};
   state.depots.forEach(d => { depotMap[normalise(d).toLowerCase()] = d; });
-  // lowercase → canonical reason code (from LM data)
   const reasonMap = {};
   state.reasonCodes.forEach(r => { reasonMap[r.toLowerCase()] = r; });
 
@@ -355,8 +386,6 @@ function visibleReasons(depotData) {
 </script>
 <script>
 // §4  INIT
-Chart.register(ChartDataLabels);
-
 function initDropdowns() {
   for (let i = 0; i < 3; i++) {
     const sel = document.getElementById(`period-${i}`);
@@ -441,13 +470,13 @@ function onBirsDrop(e, slot) {
 // §8  NAVIGATION
 function showScreen(name) {
   state.activeScreen = name;
-  document.getElementById('main-section').classList.toggle('hidden', name !== 'main');
-  document.getElementById('charts-section').classList.toggle('hidden', name !== 'charts');
-  document.getElementById('nav-main').classList.toggle('active', name === 'main');
-  document.getElementById('nav-main').classList.toggle('bg-white/10', name !== 'main');
-  document.getElementById('nav-charts').classList.toggle('active', name === 'charts');
-  document.getElementById('nav-charts').classList.toggle('bg-white/10', name !== 'charts');
+  ['main','charts','incidents'].forEach(s => {
+    document.getElementById(`${s}-section`).classList.toggle('hidden', name !== s);
+    document.getElementById(`nav-${s}`).classList.toggle('active', name === s);
+    document.getElementById(`nav-${s}`).classList.toggle('bg-white/10', name !== s);
+  });
   if (name === 'charts') renderChartsPage();
+  if (name === 'incidents') renderIncidentsPage();
 }
 
 // §9  RENDER
@@ -456,9 +485,11 @@ function render() {
   const hasData = slots.length > 0 && state.depots.length > 0;
   document.getElementById('no-data-msg').classList.toggle('hidden', hasData);
   document.getElementById('depot-content').classList.toggle('hidden', !hasData);
-  if (!hasData) return;
-  renderDepotTabs(); renderLegend(); renderTable(); renderDepotChart();
-  if (state.activeScreen === 'charts') renderChartsPage();
+  if (hasData) {
+    renderDepotTabs(); renderLegend(); renderTable(); renderDepotChart();
+    if (state.activeScreen === 'charts') renderChartsPage();
+  }
+  if (state.activeScreen === 'incidents') renderIncidentsPage();
 }
 
 function renderDepotTabs() {
@@ -532,7 +563,6 @@ function renderDepotChart() {
   const depotData = state.grouped[depot] || {};
   const reasons = visibleReasons(depotData);
   const orderedSlots = chronologicalSlotOrder();
-  const depotCounts = state.breakdownCounts[depot] || {};
 
   document.getElementById('depot-chart-title').textContent = `Total Miles Lost by Reason — ${depot}`;
 
@@ -553,37 +583,7 @@ function renderDepotChart() {
       responsive: true,
       plugins: {
         legend: { position: 'top' },
-        datalabels: {
-          display: ctx => {
-            const slot = orderedSlots[ctx.datasetIndex];
-            const r = reasons[ctx.dataIndex];
-            return (depotCounts[r] ? depotCounts[r][slot] : 0) > 0;
-          },
-          formatter: (value, ctx) => {
-            const slot = orderedSlots[ctx.datasetIndex];
-            const r = reasons[ctx.dataIndex];
-            return `\xd7${depotCounts[r] ? depotCounts[r][slot] : 0}`;
-          },
-          color: 'white',
-          font: { size: 9, weight: 'bold' },
-          anchor: 'center', align: 'center', clamp: true,
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const miles = ctx.parsed.x;
-              const slot = orderedSlots[ctx.datasetIndex];
-              const r = reasons[ctx.dataIndex];
-              const count = depotCounts[r] ? depotCounts[r][slot] : 0;
-              const lines = [` ${ctx.dataset.label}: ${miles.toFixed(1)} miles`];
-              if (count > 0) {
-                lines.push(` Breakdowns: ${count}`);
-                lines.push(` Avg: ${(miles / count).toFixed(1)} miles/breakdown`);
-              }
-              return lines;
-            }
-          }
-        }
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(1)} miles` } }
       },
       scales: {
         x: { title: { display: true, text: 'Total Miles Lost' } },
@@ -604,14 +604,11 @@ function renderChartsPage() {
   const orderedSlots = chronologicalSlotOrder();
 
   const aggregated = {};
-  const aggCounts = {};
-  state.reasonCodes.forEach(r => { aggregated[r] = [0,0,0]; aggCounts[r] = [0,0,0]; });
+  state.reasonCodes.forEach(r => { aggregated[r] = [0,0,0]; });
   depots.forEach(depot => {
     const d = state.grouped[depot] || {};
-    const c = state.breakdownCounts[depot] || {};
     state.reasonCodes.forEach(r => {
       if (d[r]) slots.forEach(i => { aggregated[r][i] += d[r][i]; });
-      if (c[r]) slots.forEach(i => { aggCounts[r][i] += c[r][i]; });
     });
   });
 
@@ -635,37 +632,7 @@ function renderChartsPage() {
       responsive: true,
       plugins: {
         legend: { position: 'top' },
-        datalabels: {
-          display: ctx => {
-            const slot = orderedSlots[ctx.datasetIndex];
-            const r = activeReasons[ctx.dataIndex];
-            return (aggCounts[r] ? aggCounts[r][slot] : 0) > 0;
-          },
-          formatter: (value, ctx) => {
-            const slot = orderedSlots[ctx.datasetIndex];
-            const r = activeReasons[ctx.dataIndex];
-            return `\xd7${aggCounts[r] ? aggCounts[r][slot] : 0}`;
-          },
-          color: 'white',
-          font: { size: 9, weight: 'bold' },
-          anchor: 'center', align: 'center', clamp: true,
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const miles = ctx.parsed.y;
-              const slot = orderedSlots[ctx.datasetIndex];
-              const r = activeReasons[ctx.dataIndex];
-              const count = aggCounts[r] ? aggCounts[r][slot] : 0;
-              const lines = [` ${ctx.dataset.label}: ${miles.toFixed(1)} miles`];
-              if (count > 0) {
-                lines.push(` Breakdowns: ${count}`);
-                lines.push(` Avg: ${(miles / count).toFixed(1)} miles/breakdown`);
-              }
-              return lines;
-            }
-          }
-        }
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} miles` } }
       },
       scales: {
         x: { ticks: { maxRotation: 45, font: { size: 10 } } },
@@ -675,7 +642,92 @@ function renderChartsPage() {
   });
 }
 
-// §12  INIT
+// §12  INCIDENTS PAGE
+function renderIncidentsPage() {
+  const hasBirs = state.rawBreakdown.some(r => r !== null);
+  document.getElementById('no-birs-msg').classList.toggle('hidden', hasBirs);
+  document.getElementById('incidents-content').classList.toggle('hidden', !hasBirs);
+  if (!hasBirs) return;
+
+  const slots = activeSlots();
+  const depotFilter = document.getElementById('inc-depot-filter').value;
+  const labels = getActiveLabels();
+  const depots = depotFilter === 'ALL' ? state.depots : [depotFilter];
+  const orderedSlots = chronologicalSlotOrder();
+
+  // Aggregate counts and miles across selected depots
+  const aggCounts = {};
+  const aggMiles = {};
+  state.reasonCodes.forEach(r => { aggCounts[r] = [0,0,0]; aggMiles[r] = [0,0,0]; });
+  depots.forEach(depot => {
+    const c = state.breakdownCounts[depot] || {};
+    const d = state.grouped[depot] || {};
+    state.reasonCodes.forEach(r => {
+      if (c[r]) slots.forEach(i => { aggCounts[r][i] += c[r][i]; });
+      if (d[r]) slots.forEach(i => { aggMiles[r][i] += d[r][i]; });
+    });
+  });
+
+  // Reasons with at least one incident across any slot
+  const activeReasons = state.reasonCodes.filter(r =>
+    state.enabledReasons.has(r) && orderedSlots.some(i => aggCounts[r][i] > 0)
+  );
+
+  const countDatasets = orderedSlots.map(i => ({
+    label: labels[i],
+    data: activeReasons.map(r => aggCounts[r][i]),
+    backgroundColor: SLOT_COLOURS[i],
+    borderRadius: 3,
+  }));
+
+  const avgDatasets = orderedSlots.map(i => ({
+    label: labels[i],
+    data: activeReasons.map(r => {
+      const cnt = aggCounts[r][i];
+      return cnt > 0 ? parseFloat((aggMiles[r][i] / cnt).toFixed(2)) : 0;
+    }),
+    backgroundColor: SLOT_COLOURS[i],
+    borderRadius: 3,
+  }));
+
+  const countCanvas = document.getElementById('inc-count-chart');
+  if (state.incCountChartInst) { state.incCountChartInst.destroy(); state.incCountChartInst = null; }
+  state.incCountChartInst = new Chart(countCanvas, {
+    type: 'bar',
+    data: { labels: activeReasons, datasets: countDatasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} incident${ctx.parsed.y !== 1 ? 's' : ''}` } }
+      },
+      scales: {
+        x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+        y: { title: { display: true, text: 'Breakdowns' }, ticks: { stepSize: 1, precision: 0 } }
+      }
+    }
+  });
+
+  const avgCanvas = document.getElementById('inc-avg-chart');
+  if (state.incAvgChartInst) { state.incAvgChartInst.destroy(); state.incAvgChartInst = null; }
+  state.incAvgChartInst = new Chart(avgCanvas, {
+    type: 'bar',
+    data: { labels: activeReasons, datasets: avgDatasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} miles/incident` } }
+      },
+      scales: {
+        x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+        y: { title: { display: true, text: 'Avg Miles Lost per Incident' } }
+      }
+    }
+  });
+}
+
+// §13  INIT
 initDropdowns();
 </script>
 </body>
