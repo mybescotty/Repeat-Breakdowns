@@ -7,15 +7,15 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; }
-    .upload-zone {
-      border: 2px dashed #94a3b8;
-      transition: border-color 0.2s, background 0.2s;
-      cursor: pointer;
-    }
+    .upload-zone { border: 2px dashed #94a3b8; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
     .upload-zone:hover, .upload-zone.drag-over { border-color: #2563eb; background: #eff6ff; }
     .upload-zone.loaded { border-color: #16a34a; background: #f0fdf4; }
+    .birs-zone { border: 1px dashed #c4b5fd; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
+    .birs-zone:hover, .birs-zone.drag-over { border-color: #7c3aed; background: #f5f3ff; }
+    .birs-zone.loaded { border-color: #7c3aed; background: #f5f3ff; border-style: solid; }
     .depot-tab.active { border-bottom: 3px solid #2563eb; color: #1d4ed8; font-weight: 600; }
     .nav-btn.active { background: #1e40af; color: white; }
     table { border-collapse: collapse; width: 100%; }
@@ -37,7 +37,7 @@
 </head>
 <body class="min-h-screen">
 
-<!-- ═══ HEADER ═══ -->
+<!-- HEADER -->
 <header class="bg-[#1e3a5f] text-white px-6 py-3 flex items-center justify-between shadow-lg">
   <div class="flex items-center gap-3">
     <svg class="w-7 h-7 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,7 +52,7 @@
   </nav>
 </header>
 
-<!-- ═══ UPLOAD PANEL ═══ -->
+<!-- UPLOAD PANEL -->
 <div class="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
   <p class="text-xs text-slate-500 mb-3 uppercase tracking-widest font-semibold">Upload Period Data (Newest → Oldest)</p>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -61,42 +61,54 @@
       <label class="block text-xs font-semibold text-slate-600 mb-1">Newest Period</label>
       <div class="upload-zone rounded-lg p-4 text-center" id="zone-0" onclick="document.getElementById('file-0').click()" ondragover="onDragOver(event,0)" ondragleave="onDragLeave(0)" ondrop="onDrop(event,0)">
         <svg class="w-6 h-6 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-        <span id="zone-0-label" class="text-xs text-slate-500">Drop CSV or click</span>
+        <span id="zone-0-label" class="text-xs text-slate-500">Drop LM CSV or click</span>
       </div>
       <input type="file" id="file-0" class="hidden" accept=".csv" onchange="handleFile(0,this)">
       <select id="period-0" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
         <option value="">— select period —</option>
       </select>
+      <div class="birs-zone rounded mt-2 px-3 py-2 text-center" id="birs-zone-0" onclick="document.getElementById('birs-file-0').click()" ondragover="onBirsDragOver(event,0)" ondragleave="onBirsDragLeave(0)" ondrop="onBirsDrop(event,0)">
+        <span id="birs-zone-0-label" class="text-xs text-violet-500">+ BIRS incidents CSV (optional)</span>
+      </div>
+      <input type="file" id="birs-file-0" class="hidden" accept=".csv" onchange="handleBreakdownFile(0,this)">
     </div>
 
     <div>
       <label class="block text-xs font-semibold text-slate-600 mb-1">Older Period</label>
       <div class="upload-zone rounded-lg p-4 text-center" id="zone-1" onclick="document.getElementById('file-1').click()" ondragover="onDragOver(event,1)" ondragleave="onDragLeave(1)" ondrop="onDrop(event,1)">
         <svg class="w-6 h-6 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-        <span id="zone-1-label" class="text-xs text-slate-500">Drop CSV or click</span>
+        <span id="zone-1-label" class="text-xs text-slate-500">Drop LM CSV or click</span>
       </div>
       <input type="file" id="file-1" class="hidden" accept=".csv" onchange="handleFile(1,this)">
       <select id="period-1" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
         <option value="">— select period —</option>
       </select>
+      <div class="birs-zone rounded mt-2 px-3 py-2 text-center" id="birs-zone-1" onclick="document.getElementById('birs-file-1').click()" ondragover="onBirsDragOver(event,1)" ondragleave="onBirsDragLeave(1)" ondrop="onBirsDrop(event,1)">
+        <span id="birs-zone-1-label" class="text-xs text-violet-500">+ BIRS incidents CSV (optional)</span>
+      </div>
+      <input type="file" id="birs-file-1" class="hidden" accept=".csv" onchange="handleBreakdownFile(1,this)">
     </div>
 
     <div>
       <label class="block text-xs font-semibold text-slate-600 mb-1">Oldest Period</label>
       <div class="upload-zone rounded-lg p-4 text-center" id="zone-2" onclick="document.getElementById('file-2').click()" ondragover="onDragOver(event,2)" ondragleave="onDragLeave(2)" ondrop="onDrop(event,2)">
         <svg class="w-6 h-6 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-        <span id="zone-2-label" class="text-xs text-slate-500">Drop CSV or click</span>
+        <span id="zone-2-label" class="text-xs text-slate-500">Drop LM CSV or click</span>
       </div>
       <input type="file" id="file-2" class="hidden" accept=".csv" onchange="handleFile(2,this)">
       <select id="period-2" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
         <option value="">— select period —</option>
       </select>
+      <div class="birs-zone rounded mt-2 px-3 py-2 text-center" id="birs-zone-2" onclick="document.getElementById('birs-file-2').click()" ondragover="onBirsDragOver(event,2)" ondragleave="onBirsDragLeave(2)" ondrop="onBirsDrop(event,2)">
+        <span id="birs-zone-2-label" class="text-xs text-violet-500">+ BIRS incidents CSV (optional)</span>
+      </div>
+      <input type="file" id="birs-file-2" class="hidden" accept=".csv" onchange="handleBreakdownFile(2,this)">
     </div>
 
   </div>
 </div>
 
-<!-- ═══ REASON CODE FILTER PANEL ═══ -->
+<!-- REASON CODE FILTER PANEL -->
 <div class="bg-slate-50 border-b border-slate-200 px-6 py-3">
   <div class="flex flex-wrap items-center gap-3">
     <span class="text-xs font-semibold text-slate-600 uppercase tracking-widest">Reason Code Filter</span>
@@ -117,7 +129,7 @@
   </div>
 </div>
 
-<!-- ═══ MAIN SCREEN ═══ -->
+<!-- MAIN SCREEN -->
 <div id="main-section" class="px-6 py-5">
   <div id="no-data-msg" class="text-center text-slate-400 mt-16">
     <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +138,6 @@
     <p class="text-lg font-medium">Upload at least one period CSV to begin</p>
     <p class="text-sm mt-1">Use the upload boxes above — then select a period label from the dropdown</p>
   </div>
-
   <div id="depot-content" class="hidden">
     <div class="flex gap-0 border-b border-slate-200 mb-5 overflow-x-auto" id="depot-tabs"></div>
     <div class="flex flex-wrap gap-4 mb-4 text-xs" id="legend"></div>
@@ -143,7 +154,7 @@
   </div>
 </div>
 
-<!-- ═══ CHARTS SCREEN ═══ -->
+<!-- CHARTS SCREEN -->
 <div id="charts-section" class="px-6 py-5 hidden">
   <div class="bg-white rounded-xl shadow p-5">
     <div class="flex flex-wrap items-center gap-4 mb-5">
@@ -160,10 +171,7 @@
 </div>
 
 <script>
-// ─── §1  PREFERRED DISPLAY ORDER (no longer a filter) ─────────────────────────
-// Codes listed here are shown first in the filter panel and charts.
-// Any code found in uploaded data but not listed here is appended alphabetically.
-
+// §1  PREFERRED DISPLAY ORDER
 const PREFERRED_ORDER = [
   'Body/Panel damage (not RTC related)',
   'Door defects',
@@ -204,44 +212,48 @@ const PERIOD_OPTIONS = [];
 
 const SLOT_COLOURS = ['#2563eb', '#f59e0b', '#16a34a'];
 
-// ─── §2  STATE ────────────────────────────────────────────────────────────────
-
+// §2  STATE
 const state = {
   raw: [null, null, null],
+  rawBreakdown: [null, null, null],
   labels: ['', '', ''],
   grouped: {},
+  breakdownCounts: {},
   depots: [],
   activeDepot: null,
   activeScreen: 'main',
-  reasonCodes: [],        // dynamically built from uploaded data
-  enabledReasons: new Set(),  // codes currently checked in the filter panel
-  knownReasons: new Set(),    // all codes ever seen (to preserve toggle state across uploads)
+  reasonCodes: [],
+  enabledReasons: new Set(),
+  knownReasons: new Set(),
   depotChartInst: null,
   periodChartInst: null,
 };
 
-// ─── §3  CSV PARSING & DATA GROUPING ─────────────────────────────────────────
-
+// §3  CSV PARSING
 function handleFile(slot, input) {
   const file = input.files[0];
   if (!file) return;
   document.getElementById(`zone-${slot}-label`).textContent = file.name;
   document.getElementById(`zone-${slot}`).classList.add('loaded');
   Papa.parse(file, {
-    header: true,
-    skipEmptyLines: true,
-    complete(result) {
-      state.raw[slot] = result.data;
-      rebuildData();
-      render();
-    }
+    header: true, skipEmptyLines: true,
+    complete(result) { state.raw[slot] = result.data; rebuildData(); render(); }
+  });
+}
+
+function handleBreakdownFile(slot, input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById(`birs-zone-${slot}-label`).textContent = file.name;
+  document.getElementById(`birs-zone-${slot}`).classList.add('loaded');
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete(result) { state.rawBreakdown[slot] = result.data; rebuildBreakdownData(); render(); }
   });
 }
 
 function rebuildData() {
   const grouped = {};
-
-  // Accept every row — no hardcoded filter
   state.raw.forEach((rows, slot) => {
     if (!rows) return;
     rows.forEach(row => {
@@ -249,10 +261,10 @@ function rebuildData() {
       if (!desc) return;
       const depot = (row.DEPOTNAME || '').trim();
       if (!depot) return;
-      const dead = parseFloat(row.TOTAL) || 0;
+      const val = parseFloat(row.TOTAL) || 0;
       if (!grouped[depot]) grouped[depot] = {};
       if (!grouped[depot][desc]) grouped[depot][desc] = [0, 0, 0];
-      grouped[depot][desc][slot] += dead;
+      grouped[depot][desc][slot] += val;
     });
   });
 
@@ -262,26 +274,18 @@ function rebuildData() {
     state.activeDepot = state.depots[0] || null;
   }
 
-  // Collect all unique codes present in data
   const found = new Set();
   Object.values(grouped).forEach(d => Object.keys(d).forEach(k => found.add(k)));
-
-  // Order: preferred codes first (in preferred order), then unknowns alphabetically
   const known = PREFERRED_ORDER.filter(r => found.has(r));
   const extra = [...found].filter(r => !PREFERRED_SET.has(r)).sort();
   state.reasonCodes = [...known, ...extra];
 
-  // Enable any newly encountered code; preserve existing toggle state for seen codes
   state.reasonCodes.forEach(r => {
-    if (!state.knownReasons.has(r)) {
-      state.enabledReasons.add(r);
-      state.knownReasons.add(r);
-    }
+    if (!state.knownReasons.has(r)) { state.enabledReasons.add(r); state.knownReasons.add(r); }
   });
 
   rebuildFilterPanel();
 
-  // Sync depot filter dropdown
   const sel = document.getElementById('chart-depot-filter');
   const prev = sel.value;
   while (sel.options.length > 1) sel.remove(1);
@@ -290,6 +294,38 @@ function rebuildData() {
     opt.value = d; opt.textContent = d; sel.appendChild(opt);
   });
   if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+
+  rebuildBreakdownData();
+}
+
+function rebuildBreakdownData() {
+  // lowercase → canonical depot name
+  const depotMap = {};
+  state.depots.forEach(d => { depotMap[normalise(d).toLowerCase()] = d; });
+  // lowercase → canonical reason code (from LM data)
+  const reasonMap = {};
+  state.reasonCodes.forEach(r => { reasonMap[r.toLowerCase()] = r; });
+
+  const counts = {};
+  state.rawBreakdown.forEach((rows, slot) => {
+    if (!rows) return;
+    rows.forEach(row => {
+      const keys = Object.keys(row);
+      const locKey = keys.find(h => h.trim().toLowerCase().includes('location'));
+      const reaKey = keys.find(h => h.trim().toLowerCase() === 'reason' || h.trim().toLowerCase() === 'reasondesc');
+      if (!locKey || !reaKey) return;
+      const location = normalise(row[locKey] || '');
+      const reasonRaw = normalise(row[reaKey] || '');
+      if (!location || !reasonRaw) return;
+      const depot = depotMap[location.toLowerCase()];
+      if (!depot) return;
+      const reason = reasonMap[reasonRaw.toLowerCase()] || reasonRaw;
+      if (!counts[depot]) counts[depot] = {};
+      if (!counts[depot][reason]) counts[depot][reason] = [0, 0, 0];
+      counts[depot][reason][slot]++;
+    });
+  });
+  state.breakdownCounts = counts;
 }
 
 function onPeriodChange() {
@@ -300,8 +336,6 @@ function onPeriodChange() {
 function getActiveLabels() { return state.labels.map((l, i) => l || `Period ${i+1}`); }
 function activeSlots() { return state.raw.map((r, i) => r ? i : -1).filter(i => i >= 0); }
 
-// Return active slot indices sorted chronologically by selected period label (oldest first).
-// Slots without a label selected keep their natural upload-box order at the end.
 function chronologicalSlotOrder() {
   return activeSlots().sort((a, b) => {
     const ia = PERIOD_OPTIONS.indexOf(state.labels[a]);
@@ -320,7 +354,8 @@ function visibleReasons(depotData) {
 }
 </script>
 <script>
-// ─── §4  INIT ────────────────────────────────────────────────────────────────
+// §4  INIT
+Chart.register(ChartDataLabels);
 
 function initDropdowns() {
   for (let i = 0; i < 3; i++) {
@@ -332,20 +367,13 @@ function initDropdowns() {
   }
 }
 
-// ─── §5  DYNAMIC FILTER PANEL ────────────────────────────────────────────────
-
+// §5  FILTER PANEL
 function rebuildFilterPanel() {
   const grid = document.getElementById('reason-grid');
   const emptyMsg = document.getElementById('filter-empty-msg');
   grid.innerHTML = '';
-
-  if (state.reasonCodes.length === 0) {
-    emptyMsg.classList.remove('hidden');
-    updateFilterCount();
-    return;
-  }
+  if (state.reasonCodes.length === 0) { emptyMsg.classList.remove('hidden'); updateFilterCount(); return; }
   emptyMsg.classList.add('hidden');
-
   state.reasonCodes.forEach(r => {
     const label = document.createElement('label');
     label.className = 'rc-label';
@@ -356,9 +384,7 @@ function rebuildFilterPanel() {
     const span = document.createElement('span');
     span.textContent = r;
     span.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-    label.appendChild(cb);
-    label.appendChild(span);
-    grid.appendChild(label);
+    label.appendChild(cb); label.appendChild(span); grid.appendChild(label);
   });
   updateFilterCount();
 }
@@ -369,29 +395,20 @@ function updateFilterCount() {
   if (el) el.textContent = total > 0 ? `(${state.enabledReasons.size} of ${total} shown)` : '';
 }
 
-// ─── §6  FILTER PANEL CONTROLS ───────────────────────────────────────────────
-
 function toggleReason(r, checked) {
-  if (checked) state.enabledReasons.add(r);
-  else state.enabledReasons.delete(r);
-  updateFilterCount();
-  render();
+  if (checked) state.enabledReasons.add(r); else state.enabledReasons.delete(r);
+  updateFilterCount(); render();
 }
-
 function selectAllReasons() {
   state.reasonCodes.forEach(r => state.enabledReasons.add(r));
   document.querySelectorAll('#reason-grid input[type=checkbox]').forEach(cb => cb.checked = true);
-  updateFilterCount();
-  render();
+  updateFilterCount(); render();
 }
-
 function clearAllReasons() {
   state.enabledReasons.clear();
   document.querySelectorAll('#reason-grid input[type=checkbox]').forEach(cb => cb.checked = false);
-  updateFilterCount();
-  render();
+  updateFilterCount(); render();
 }
-
 function toggleFilterPanel() {
   const body = document.getElementById('reason-filter-body');
   const lbl  = document.getElementById('filter-toggle-label');
@@ -401,29 +418,27 @@ function toggleFilterPanel() {
   arr.style.transform = open ? '' : 'rotate(180deg)';
 }
 
-// ─── §7  DRAG-AND-DROP HELPERS ───────────────────────────────────────────────
-
-function onDragOver(e, slot) {
-  e.preventDefault();
-  document.getElementById(`zone-${slot}`).classList.add('drag-over');
-}
-function onDragLeave(slot) {
-  document.getElementById(`zone-${slot}`).classList.remove('drag-over');
-}
+// §6  DRAG-DROP (LM)
+function onDragOver(e, slot) { e.preventDefault(); document.getElementById(`zone-${slot}`).classList.add('drag-over'); }
+function onDragLeave(slot) { document.getElementById(`zone-${slot}`).classList.remove('drag-over'); }
 function onDrop(e, slot) {
-  e.preventDefault();
-  document.getElementById(`zone-${slot}`).classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (!file) return;
-  const dt = new DataTransfer();
-  dt.items.add(file);
-  const input = document.getElementById(`file-${slot}`);
-  input.files = dt.files;
-  handleFile(slot, input);
+  e.preventDefault(); document.getElementById(`zone-${slot}`).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0]; if (!file) return;
+  const dt = new DataTransfer(); dt.items.add(file);
+  const input = document.getElementById(`file-${slot}`); input.files = dt.files; handleFile(slot, input);
 }
 
-// ─── §8  SCREEN NAVIGATION ───────────────────────────────────────────────────
+// §7  DRAG-DROP (BIRS)
+function onBirsDragOver(e, slot) { e.preventDefault(); document.getElementById(`birs-zone-${slot}`).classList.add('drag-over'); }
+function onBirsDragLeave(slot) { document.getElementById(`birs-zone-${slot}`).classList.remove('drag-over'); }
+function onBirsDrop(e, slot) {
+  e.preventDefault(); document.getElementById(`birs-zone-${slot}`).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0]; if (!file) return;
+  const dt = new DataTransfer(); dt.items.add(file);
+  const input = document.getElementById(`birs-file-${slot}`); input.files = dt.files; handleBreakdownFile(slot, input);
+}
 
+// §8  NAVIGATION
 function showScreen(name) {
   state.activeScreen = name;
   document.getElementById('main-section').classList.toggle('hidden', name !== 'main');
@@ -435,18 +450,14 @@ function showScreen(name) {
   if (name === 'charts') renderChartsPage();
 }
 
-// ─── §9  MAIN VIEW RENDER ────────────────────────────────────────────────────
-
+// §9  RENDER
 function render() {
   const slots = activeSlots();
   const hasData = slots.length > 0 && state.depots.length > 0;
   document.getElementById('no-data-msg').classList.toggle('hidden', hasData);
   document.getElementById('depot-content').classList.toggle('hidden', !hasData);
   if (!hasData) return;
-  renderDepotTabs();
-  renderLegend();
-  renderTable();
-  renderDepotChart();
+  renderDepotTabs(); renderLegend(); renderTable(); renderDepotChart();
   if (state.activeScreen === 'charts') renderChartsPage();
 }
 
@@ -464,8 +475,7 @@ function renderDepotTabs() {
 }
 
 function renderLegend() {
-  const slots = activeSlots();
-  const labels = getActiveLabels();
+  const slots = activeSlots(); const labels = getActiveLabels();
   const container = document.getElementById('legend');
   container.innerHTML = '';
   slots.forEach(i => {
@@ -478,25 +488,21 @@ function renderLegend() {
 
 function renderTable() {
   const depot = state.activeDepot;
-  const slots = activeSlots();
-  const labels = getActiveLabels();
+  const slots = activeSlots(); const labels = getActiveLabels();
   const depotData = state.grouped[depot] || {};
   const reasons = visibleReasons(depotData);
-
   let maxVal = 0;
   reasons.forEach(r => { slots.forEach(i => { maxVal = Math.max(maxVal, depotData[r][i] || 0); }); });
 
-  const thead = document.getElementById('table-head');
-  thead.innerHTML = '<th>Reason Description</th>' +
+  document.getElementById('table-head').innerHTML = '<th>Reason Description</th>' +
     slots.map(i => `<th>${labels[i]}<br><span class="font-normal opacity-70">Total Miles</span></th>`).join('') +
     '<th>Trend Bar</th>';
 
-  const totals = [0, 0, 0];
+  const totals = [0,0,0];
   reasons.forEach(r => { slots.forEach(i => { totals[i] += (depotData[r] ? depotData[r][i] : 0); }); });
 
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = '';
-
   const totRow = document.createElement('tr');
   totRow.className = 'totals-row';
   totRow.innerHTML = '<td>TOTAL (visible)</td>' +
@@ -519,20 +525,20 @@ function renderTable() {
   });
 }
 
-// ─── §10  DEPOT BAR CHART ────────────────────────────────────────────────────
-
+// §10  DEPOT CHART
 function renderDepotChart() {
   const depot = state.activeDepot;
-  const slots = activeSlots();
   const labels = getActiveLabels();
   const depotData = state.grouped[depot] || {};
   const reasons = visibleReasons(depotData);
+  const orderedSlots = chronologicalSlotOrder();
+  const depotCounts = state.breakdownCounts[depot] || {};
 
   document.getElementById('depot-chart-title').textContent = `Total Miles Lost by Reason — ${depot}`;
 
-  const datasets = chronologicalSlotOrder().map(i => ({
+  const datasets = orderedSlots.map(i => ({
     label: labels[i],
-    data: reasons.map(r => (depotData[r] ? depotData[r][i] : 0)),
+    data: reasons.map(r => depotData[r] ? depotData[r][i] : 0),
     backgroundColor: SLOT_COLOURS[i],
     borderRadius: 3,
   }));
@@ -545,7 +551,40 @@ function renderDepotChart() {
     options: {
       indexAxis: 'y',
       responsive: true,
-      plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(1)} miles` } } },
+      plugins: {
+        legend: { position: 'top' },
+        datalabels: {
+          display: ctx => {
+            const slot = orderedSlots[ctx.datasetIndex];
+            const r = reasons[ctx.dataIndex];
+            return (depotCounts[r] ? depotCounts[r][slot] : 0) > 0;
+          },
+          formatter: (value, ctx) => {
+            const slot = orderedSlots[ctx.datasetIndex];
+            const r = reasons[ctx.dataIndex];
+            return `\xd7${depotCounts[r] ? depotCounts[r][slot] : 0}`;
+          },
+          color: 'white',
+          font: { size: 9, weight: 'bold' },
+          anchor: 'center', align: 'center', clamp: true,
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const miles = ctx.parsed.x;
+              const slot = orderedSlots[ctx.datasetIndex];
+              const r = reasons[ctx.dataIndex];
+              const count = depotCounts[r] ? depotCounts[r][slot] : 0;
+              const lines = [` ${ctx.dataset.label}: ${miles.toFixed(1)} miles`];
+              if (count > 0) {
+                lines.push(` Breakdowns: ${count}`);
+                lines.push(` Avg: ${(miles / count).toFixed(1)} miles/breakdown`);
+              }
+              return lines;
+            }
+          }
+        }
+      },
       scales: {
         x: { title: { display: true, text: 'Total Miles Lost' } },
         y: { ticks: { font: { size: 11 } } }
@@ -554,8 +593,7 @@ function renderDepotChart() {
   });
 }
 
-// ─── §11  PERIOD COMPARISON CHART ────────────────────────────────────────────
-
+// §11  PERIOD COMPARISON CHART
 function renderChartsPage() {
   const slots = activeSlots();
   if (slots.length === 0) return;
@@ -563,13 +601,17 @@ function renderChartsPage() {
   const depotFilter = document.getElementById('chart-depot-filter').value;
   const labels = getActiveLabels();
   const depots = depotFilter === 'ALL' ? state.depots : [depotFilter];
+  const orderedSlots = chronologicalSlotOrder();
 
   const aggregated = {};
-  state.reasonCodes.forEach(r => { aggregated[r] = [0, 0, 0]; });
+  const aggCounts = {};
+  state.reasonCodes.forEach(r => { aggregated[r] = [0,0,0]; aggCounts[r] = [0,0,0]; });
   depots.forEach(depot => {
     const d = state.grouped[depot] || {};
+    const c = state.breakdownCounts[depot] || {};
     state.reasonCodes.forEach(r => {
       if (d[r]) slots.forEach(i => { aggregated[r][i] += d[r][i]; });
+      if (c[r]) slots.forEach(i => { aggCounts[r][i] += c[r][i]; });
     });
   });
 
@@ -577,7 +619,7 @@ function renderChartsPage() {
     state.enabledReasons.has(r) && slots.some(i => aggregated[r][i] > 0)
   );
 
-  const datasets = chronologicalSlotOrder().map(i => ({
+  const datasets = orderedSlots.map(i => ({
     label: labels[i],
     data: activeReasons.map(r => aggregated[r][i]),
     backgroundColor: SLOT_COLOURS[i],
@@ -593,7 +635,37 @@ function renderChartsPage() {
       responsive: true,
       plugins: {
         legend: { position: 'top' },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} miles` } }
+        datalabels: {
+          display: ctx => {
+            const slot = orderedSlots[ctx.datasetIndex];
+            const r = activeReasons[ctx.dataIndex];
+            return (aggCounts[r] ? aggCounts[r][slot] : 0) > 0;
+          },
+          formatter: (value, ctx) => {
+            const slot = orderedSlots[ctx.datasetIndex];
+            const r = activeReasons[ctx.dataIndex];
+            return `\xd7${aggCounts[r] ? aggCounts[r][slot] : 0}`;
+          },
+          color: 'white',
+          font: { size: 9, weight: 'bold' },
+          anchor: 'center', align: 'center', clamp: true,
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const miles = ctx.parsed.y;
+              const slot = orderedSlots[ctx.datasetIndex];
+              const r = activeReasons[ctx.dataIndex];
+              const count = aggCounts[r] ? aggCounts[r][slot] : 0;
+              const lines = [` ${ctx.dataset.label}: ${miles.toFixed(1)} miles`];
+              if (count > 0) {
+                lines.push(` Breakdowns: ${count}`);
+                lines.push(` Avg: ${(miles / count).toFixed(1)} miles/breakdown`);
+              }
+              return lines;
+            }
+          }
+        }
       },
       scales: {
         x: { ticks: { maxRotation: 45, font: { size: 10 } } },
@@ -603,8 +675,7 @@ function renderChartsPage() {
   });
 }
 
-// ─── §12  INIT ────────────────────────────────────────────────────────────────
-
+// §12  INIT
 initDropdowns();
 </script>
 </body>
