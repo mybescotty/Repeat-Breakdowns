@@ -12,7 +12,7 @@
     .upload-zone { border: 2px dashed #94a3b8; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
     .upload-zone:hover, .upload-zone.drag-over { border-color: #2563eb; background: #eff6ff; }
     .upload-zone.loaded { border-color: #16a34a; background: #f0fdf4; }
-    .birs-zone { border: 1px dashed #c4b5fd; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
+    .birs-zone { border: 2px dashed #c4b5fd; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
     .birs-zone:hover, .birs-zone.drag-over { border-color: #7c3aed; background: #f5f3ff; }
     .birs-zone.loaded { border-color: #7c3aed; background: #f5f3ff; border-style: solid; }
     .depot-tab.active { border-bottom: 3px solid #2563eb; color: #1d4ed8; font-weight: 600; }
@@ -67,10 +67,6 @@
       <select id="period-0" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
         <option value="">— select period —</option>
       </select>
-      <div class="birs-zone rounded mt-2 px-3 py-2 text-center" id="birs-zone-0" onclick="document.getElementById('birs-file-0').click()" ondragover="onBirsDragOver(event,0)" ondragleave="onBirsDragLeave(0)" ondrop="onBirsDrop(event,0)">
-        <span id="birs-zone-0-label" class="text-xs text-violet-500">+ BIRS incidents CSV (optional)</span>
-      </div>
-      <input type="file" id="birs-file-0" class="hidden" accept=".csv" onchange="handleBreakdownFile(0,this)">
     </div>
 
     <div>
@@ -83,10 +79,6 @@
       <select id="period-1" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
         <option value="">— select period —</option>
       </select>
-      <div class="birs-zone rounded mt-2 px-3 py-2 text-center" id="birs-zone-1" onclick="document.getElementById('birs-file-1').click()" ondragover="onBirsDragOver(event,1)" ondragleave="onBirsDragLeave(1)" ondrop="onBirsDrop(event,1)">
-        <span id="birs-zone-1-label" class="text-xs text-violet-500">+ BIRS incidents CSV (optional)</span>
-      </div>
-      <input type="file" id="birs-file-1" class="hidden" accept=".csv" onchange="handleBreakdownFile(1,this)">
     </div>
 
     <div>
@@ -99,12 +91,20 @@
       <select id="period-2" class="mt-2 w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" onchange="onPeriodChange()">
         <option value="">— select period —</option>
       </select>
-      <div class="birs-zone rounded mt-2 px-3 py-2 text-center" id="birs-zone-2" onclick="document.getElementById('birs-file-2').click()" ondragover="onBirsDragOver(event,2)" ondragleave="onBirsDragLeave(2)" ondrop="onBirsDrop(event,2)">
-        <span id="birs-zone-2-label" class="text-xs text-violet-500">+ BIRS incidents CSV (optional)</span>
-      </div>
-      <input type="file" id="birs-file-2" class="hidden" accept=".csv" onchange="handleBreakdownFile(2,this)">
     </div>
 
+  </div>
+
+  <!-- Single BIRS upload — covers all periods, auto-assigned by date -->
+  <div class="mt-4 pt-3 border-t border-slate-100">
+    <label class="block text-xs font-semibold text-violet-600 mb-1">Breakdown Incidents — all periods (BIRS CSV)</label>
+    <div class="birs-zone rounded-lg px-5 py-3 flex items-center gap-4" id="birs-zone"
+         onclick="document.getElementById('birs-file').click()"
+         ondragover="onBirsDragOver(event)" ondragleave="onBirsDragLeave()" ondrop="onBirsDrop(event)">
+      <svg class="w-5 h-5 text-violet-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+      <span id="birs-zone-label" class="text-xs text-violet-500">Drop BIRS incidents CSV or click — incidents are assigned to periods automatically by date (col C: Call D/T)</span>
+    </div>
+    <input type="file" id="birs-file" class="hidden" accept=".csv" onchange="handleBreakdownFile(this)">
   </div>
 </div>
 
@@ -115,8 +115,7 @@
     <button onclick="selectAllReasons()" class="text-xs px-2 py-0.5 rounded border border-blue-300 text-blue-700 hover:bg-blue-50">Select All</button>
     <button onclick="clearAllReasons()" class="text-xs px-2 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50">Clear All</button>
     <span id="filter-count" class="text-xs text-slate-400"></span>
-    <button onclick="toggleFilterPanel()" id="filter-toggle-btn"
-      class="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 font-medium">
+    <button onclick="toggleFilterPanel()" class="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 font-medium">
       <span id="filter-toggle-label">Show filters</span>
       <svg id="filter-arrow" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -176,15 +175,18 @@
     <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
     </svg>
-    <p class="text-lg font-medium">Upload BIRS incident CSVs to see breakdown counts</p>
-    <p class="text-sm mt-1">Use the purple upload zones beneath each period's LM CSV</p>
+    <p class="text-lg font-medium">Upload a BIRS incidents CSV to see breakdown counts</p>
+    <p class="text-sm mt-1">Upload the purple zone in the panel above — incidents are auto-assigned to periods by date</p>
   </div>
   <div id="incidents-content" class="hidden">
-    <div class="flex items-center gap-2 mb-5">
-      <label class="text-xs text-slate-500 font-medium">Filter depot:</label>
-      <select id="inc-depot-filter" class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white" onchange="renderIncidentsPage()">
-        <option value="ALL">All Depots</option>
-      </select>
+    <div class="flex flex-wrap items-center gap-4 mb-5">
+      <div id="birs-period-badges" class="flex gap-2 flex-wrap"></div>
+      <div class="flex items-center gap-2 ml-auto">
+        <label class="text-xs text-slate-500 font-medium">Filter depot:</label>
+        <select id="inc-depot-filter" class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white" onchange="renderIncidentsPage()">
+          <option value="ALL">All Depots</option>
+        </select>
+      </div>
     </div>
     <div class="bg-white rounded-xl shadow p-5 mb-5">
       <h2 class="text-base font-bold text-slate-700 mb-4">Number of Breakdowns per Reason</h2>
@@ -200,49 +202,76 @@
 <script>
 // §1  PREFERRED DISPLAY ORDER
 const PREFERRED_ORDER = [
-  'Body/Panel damage (not RTC related)',
-  'Door defects',
-  'Drive Battery Fault',
-  'Electrical defects',
-  'Eminox/Exhaust after treatment defect',
-  'Engine Failure',
-  'EV Battery Low',
-  'EV Fault',
-  'Fluid/Air leaks (Oil,Coolant,Fuel,Air)',
-  'Foot/hand brake defect',
-  'Gears defect',
-  'Indicator defect',
-  'Lights external/internal',
-  'Loss of power to ticketer/destination screen/CCTV',
-  'Markerlight',
-  'Mirror defect( Not inc Accident Damage)',
-  'No Bus Available',
-  'Out of fuel',
-  'Overheating, Cold',
-  'Speedo defect',
-  'Steering',
-  'Suspension/Kneeling',
-  'Water Ingress',
-  'Wheelchair ramp failure',
-  'Wipers/demisters defect',
-  'Accident (our vehicle)',
-  'Bus vandalism',
+  'Body/Panel damage (not RTC related)', 'Door defects', 'Drive Battery Fault',
+  'Electrical defects', 'Eminox/Exhaust after treatment defect', 'Engine Failure',
+  'EV Battery Low', 'EV Fault', 'Fluid/Air leaks (Oil,Coolant,Fuel,Air)',
+  'Foot/hand brake defect', 'Gears defect', 'Indicator defect',
+  'Lights external/internal', 'Loss of power to ticketer/destination screen/CCTV',
+  'Markerlight', 'Mirror defect( Not inc Accident Damage)', 'No Bus Available',
+  'Out of fuel', 'Overheating, Cold', 'Speedo defect', 'Steering',
+  'Suspension/Kneeling', 'Water Ingress', 'Wheelchair ramp failure',
+  'Wipers/demisters defect', 'Accident (our vehicle)', 'Bus vandalism',
 ];
 const PREFERRED_SET = new Set(PREFERRED_ORDER);
 
 function normalise(s) { return (s || '').trim().replace(/\s+/g, ' '); }
 
+// Period label list (chronological — used for slot ordering)
 const PERIOD_OPTIONS = [];
 ['FY26','FY27','FY28'].forEach(fy => {
   for (let p = 1; p <= 12; p++) PERIOD_OPTIONS.push(`${fy} P${p}`);
 });
+
+// Period start dates derived from FirstGroup finance calendar 26-27.
+// FY26 = Apr 2025–Mar 2026, FY27 = Apr 2026–Mar 2027, FY28 = Apr 2027–Mar 2028.
+// Weeks start Sunday; pattern is 4-4-5 per quarter.
+const PERIOD_STARTS = (function() {
+  const raw = [
+    ['FY26 P1',  2025, 2, 30], ['FY26 P2',  2025, 3, 27], ['FY26 P3',  2025, 4, 25],
+    ['FY26 P4',  2025, 5, 29], ['FY26 P5',  2025, 6, 27], ['FY26 P6',  2025, 7, 24],
+    ['FY26 P7',  2025, 8, 28], ['FY26 P8',  2025, 9, 26], ['FY26 P9',  2025, 10, 23],
+    ['FY26 P10', 2025, 11, 21],['FY26 P11', 2026, 0, 25], ['FY26 P12', 2026, 1, 22],
+    ['FY27 P1',  2026, 2, 29], ['FY27 P2',  2026, 3, 26], ['FY27 P3',  2026, 4, 24],
+    ['FY27 P4',  2026, 5, 28], ['FY27 P5',  2026, 6, 26], ['FY27 P6',  2026, 7, 23],
+    ['FY27 P7',  2026, 8, 27], ['FY27 P8',  2026, 9, 25], ['FY27 P9',  2026, 10, 22],
+    ['FY27 P10', 2026, 11, 20],['FY27 P11', 2027, 0, 24], ['FY27 P12', 2027, 1, 21],
+    ['FY28 P1',  2027, 2, 28], ['FY28 P2',  2027, 3, 25], ['FY28 P3',  2027, 4, 23],
+    ['FY28 P4',  2027, 5, 27], ['FY28 P5',  2027, 6, 25], ['FY28 P6',  2027, 7, 22],
+    ['FY28 P7',  2027, 8, 26], ['FY28 P8',  2027, 9, 24], ['FY28 P9',  2027, 10, 21],
+    ['FY28 P10', 2027, 11, 19],['FY28 P11', 2028, 0, 23], ['FY28 P12', 2028, 1, 20],
+  ];
+  const out = {};
+  raw.forEach(([p, y, m, d]) => { out[p] = new Date(y, m, d).getTime(); });
+  return out;
+})();
+
+// Return the period label the given Date falls within, or null if before FY26 P1.
+function findPeriodLabel(date) {
+  const t = date.getTime();
+  let result = null;
+  for (const p of PERIOD_OPTIONS) {
+    if (PERIOD_STARTS[p] === undefined) continue;
+    if (t >= PERIOD_STARTS[p]) result = p;
+    else break;
+  }
+  return result;
+}
+
+// Parse DD/MM/YYYY or DD/MM/YYYY HH:MM date strings from BIRS
+function parseBirsDate(str) {
+  const m = (str || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+  const m2 = (str || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m2) return new Date(parseInt(m2[1]), parseInt(m2[2]) - 1, parseInt(m2[3]));
+  return null;
+}
 
 const SLOT_COLOURS = ['#2563eb', '#f59e0b', '#16a34a'];
 
 // §2  STATE
 const state = {
   raw: [null, null, null],
-  rawBreakdown: [null, null, null],
+  rawBreakdown: null,        // single BIRS file covering all periods
   labels: ['', '', ''],
   grouped: {},
   breakdownCounts: {},
@@ -270,14 +299,14 @@ function handleFile(slot, input) {
   });
 }
 
-function handleBreakdownFile(slot, input) {
+function handleBreakdownFile(input) {
   const file = input.files[0];
   if (!file) return;
-  document.getElementById(`birs-zone-${slot}-label`).textContent = file.name;
-  document.getElementById(`birs-zone-${slot}`).classList.add('loaded');
+  document.getElementById('birs-zone-label').textContent = file.name;
+  document.getElementById('birs-zone').classList.add('loaded');
   Papa.parse(file, {
     header: true, skipEmptyLines: true,
-    complete(result) { state.rawBreakdown[slot] = result.data; rebuildBreakdownData(); render(); }
+    complete(result) { state.rawBreakdown = result.data; rebuildBreakdownData(); render(); }
   });
 }
 
@@ -318,6 +347,65 @@ function rebuildData() {
   rebuildBreakdownData();
 }
 
+// Build breakdown counts from single BIRS file, assigning each row to a slot
+// by matching its Call D/T date against the user-selected period labels.
+function rebuildBreakdownData() {
+  const depotMap = {};
+  state.depots.forEach(d => { depotMap[normalise(d).toLowerCase()] = d; });
+  const reasonMap = {};
+  state.reasonCodes.forEach(r => { reasonMap[r.toLowerCase()] = r; });
+
+  // Map period label → slot index (only slots with a label selected)
+  const labelToSlot = {};
+  state.labels.forEach((lbl, i) => { if (lbl) labelToSlot[lbl] = i; });
+
+  const counts = {};
+  if (!state.rawBreakdown) { state.breakdownCounts = counts; return; }
+
+  state.rawBreakdown.forEach(row => {
+    const keys = Object.keys(row);
+    const locKey = keys.find(h => h.trim().toLowerCase().includes('location'));
+    const reaKey = keys.find(h => {
+      const lc = h.trim().toLowerCase();
+      return lc === 'reason' || lc === 'reasondesc';
+    });
+    // date: prefer "Call D/T", otherwise first key containing "date" or "call"
+    const dtKey = keys.find(h => h.trim().toLowerCase().includes('call')) ||
+                  keys.find(h => h.trim().toLowerCase().includes('date'));
+
+    if (!locKey || !reaKey || !dtKey) return;
+
+    const date = parseBirsDate(row[dtKey]);
+    if (!date) return;
+
+    const periodLabel = findPeriodLabel(date);
+    if (!periodLabel) return;
+
+    const slot = labelToSlot[periodLabel];
+    if (slot === undefined) return; // incident not in any selected period
+
+    const location = normalise(row[locKey] || '');
+    const reasonRaw = normalise(row[reaKey] || '');
+    if (!location || !reasonRaw) return;
+
+    const depot = depotMap[location.toLowerCase()];
+    if (!depot) return;
+
+    const reason = reasonMap[reasonRaw.toLowerCase()] || reasonRaw;
+    if (!counts[depot]) counts[depot] = {};
+    if (!counts[depot][reason]) counts[depot][reason] = [0, 0, 0];
+    counts[depot][reason][slot]++;
+  });
+
+  state.breakdownCounts = counts;
+}
+
+function onPeriodChange() {
+  for (let i = 0; i < 3; i++) state.labels[i] = document.getElementById(`period-${i}`).value;
+  rebuildBreakdownData(); // re-assign BIRS rows to slots whenever labels change
+  render();
+}
+
 function syncDepotDropdowns() {
   ['chart-depot-filter', 'inc-depot-filter'].forEach(id => {
     const sel = document.getElementById(id);
@@ -329,39 +417,6 @@ function syncDepotDropdowns() {
     });
     if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
   });
-}
-
-function rebuildBreakdownData() {
-  const depotMap = {};
-  state.depots.forEach(d => { depotMap[normalise(d).toLowerCase()] = d; });
-  const reasonMap = {};
-  state.reasonCodes.forEach(r => { reasonMap[r.toLowerCase()] = r; });
-
-  const counts = {};
-  state.rawBreakdown.forEach((rows, slot) => {
-    if (!rows) return;
-    rows.forEach(row => {
-      const keys = Object.keys(row);
-      const locKey = keys.find(h => h.trim().toLowerCase().includes('location'));
-      const reaKey = keys.find(h => h.trim().toLowerCase() === 'reason' || h.trim().toLowerCase() === 'reasondesc');
-      if (!locKey || !reaKey) return;
-      const location = normalise(row[locKey] || '');
-      const reasonRaw = normalise(row[reaKey] || '');
-      if (!location || !reasonRaw) return;
-      const depot = depotMap[location.toLowerCase()];
-      if (!depot) return;
-      const reason = reasonMap[reasonRaw.toLowerCase()] || reasonRaw;
-      if (!counts[depot]) counts[depot] = {};
-      if (!counts[depot][reason]) counts[depot][reason] = [0, 0, 0];
-      counts[depot][reason][slot]++;
-    });
-  });
-  state.breakdownCounts = counts;
-}
-
-function onPeriodChange() {
-  for (let i = 0; i < 3; i++) state.labels[i] = document.getElementById(`period-${i}`).value;
-  render();
 }
 
 function getActiveLabels() { return state.labels.map((l, i) => l || `Period ${i+1}`); }
@@ -457,14 +512,14 @@ function onDrop(e, slot) {
   const input = document.getElementById(`file-${slot}`); input.files = dt.files; handleFile(slot, input);
 }
 
-// §7  DRAG-DROP (BIRS)
-function onBirsDragOver(e, slot) { e.preventDefault(); document.getElementById(`birs-zone-${slot}`).classList.add('drag-over'); }
-function onBirsDragLeave(slot) { document.getElementById(`birs-zone-${slot}`).classList.remove('drag-over'); }
-function onBirsDrop(e, slot) {
-  e.preventDefault(); document.getElementById(`birs-zone-${slot}`).classList.remove('drag-over');
+// §7  DRAG-DROP (BIRS — single file)
+function onBirsDragOver(e) { e.preventDefault(); document.getElementById('birs-zone').classList.add('drag-over'); }
+function onBirsDragLeave() { document.getElementById('birs-zone').classList.remove('drag-over'); }
+function onBirsDrop(e) {
+  e.preventDefault(); document.getElementById('birs-zone').classList.remove('drag-over');
   const file = e.dataTransfer.files[0]; if (!file) return;
   const dt = new DataTransfer(); dt.items.add(file);
-  const input = document.getElementById(`birs-file-${slot}`); input.files = dt.files; handleBreakdownFile(slot, input);
+  const input = document.getElementById('birs-file'); input.files = dt.files; handleBreakdownFile(input);
 }
 
 // §8  NAVIGATION
@@ -579,8 +634,7 @@ function renderDepotChart() {
     type: 'bar',
     data: { labels: reasons, datasets },
     options: {
-      indexAxis: 'y',
-      responsive: true,
+      indexAxis: 'y', responsive: true,
       plugins: {
         legend: { position: 'top' },
         tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(1)} miles` } }
@@ -644,18 +698,34 @@ function renderChartsPage() {
 
 // §12  INCIDENTS PAGE
 function renderIncidentsPage() {
-  const hasBirs = state.rawBreakdown.some(r => r !== null);
+  const hasBirs = state.rawBreakdown !== null;
   document.getElementById('no-birs-msg').classList.toggle('hidden', hasBirs);
   document.getElementById('incidents-content').classList.toggle('hidden', !hasBirs);
   if (!hasBirs) return;
 
   const slots = activeSlots();
-  const depotFilter = document.getElementById('inc-depot-filter').value;
   const labels = getActiveLabels();
+  const depotFilter = document.getElementById('inc-depot-filter').value;
   const depots = depotFilter === 'ALL' ? state.depots : [depotFilter];
   const orderedSlots = chronologicalSlotOrder();
 
-  // Aggregate counts and miles across selected depots
+  // Show which periods had incidents matched
+  const badgeEl = document.getElementById('birs-period-badges');
+  badgeEl.innerHTML = '';
+  orderedSlots.forEach(i => {
+    const lbl = state.labels[i];
+    if (!lbl) return;
+    const totalInSlot = state.depots.reduce((s, d) => {
+      const c = state.breakdownCounts[d] || {};
+      return s + state.reasonCodes.reduce((s2, r) => s2 + (c[r] ? c[r][i] : 0), 0);
+    }, 0);
+    const badge = document.createElement('span');
+    badge.className = 'text-xs px-2 py-0.5 rounded-full font-medium text-white';
+    badge.style.background = SLOT_COLOURS[i];
+    badge.textContent = `${lbl}: ${totalInSlot} incidents`;
+    badgeEl.appendChild(badge);
+  });
+
   const aggCounts = {};
   const aggMiles = {};
   state.reasonCodes.forEach(r => { aggCounts[r] = [0,0,0]; aggMiles[r] = [0,0,0]; });
@@ -668,7 +738,6 @@ function renderIncidentsPage() {
     });
   });
 
-  // Reasons with at least one incident across any slot
   const activeReasons = state.reasonCodes.filter(r =>
     state.enabledReasons.has(r) && orderedSlots.some(i => aggCounts[r][i] > 0)
   );
