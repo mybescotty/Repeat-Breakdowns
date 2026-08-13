@@ -581,7 +581,7 @@ function renderTable() {
   reasons.forEach(r => { slots.forEach(i => { maxVal = Math.max(maxVal, depotData[r][i] || 0); }); });
 
   document.getElementById('table-head').innerHTML = '<th>Reason Description</th>' +
-    slots.map(i => `<th>${labels[i]}<br><span class="font-normal opacity-70">Total Miles</span></th>`).join('') +
+    slots.map(i => `<th style="text-align:right">${labels[i]}<br><span class="font-normal opacity-70">Total Miles</span></th>`).join('') +
     '<th>Trend Bar</th>';
 
   const totals = [0,0,0];
